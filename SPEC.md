@@ -126,6 +126,7 @@ The demo history lives in a separate repo, `marcocharco/acme-pricing-demo`, so R
 - **Seed:** a static ACME pricing page (all the UI, no logic), committed first.
 - **Session 1, Trail #3, merged:** a real headless Claude Code session with scripted developer prompts wires seats, the Team minimum and SAVE10 correctly. This is the regression suite. Entire links the session to the Trail (`entire trail sessions`). Project Trails share one number sequence across repos, and a merged change shows `phase: complete` while the Trail's `status` stays `open`, so key on the change being merged.
 - **Session 2, the demo Trail (#4, left open):** adds annual billing, the Team volume discount and coupon handling, and ends with the four bugs. **Session 3** is the fix, run ahead of time and kept for the fix beat.
+- **Live state (Nov 21):** Trail #4 "Annual billing and volume pricing" is open (change `acme-pricing-demo/2`, branch `feat/annual-volume`, session `592c31ad`). The buggy branch is deployed as the live site at `https://acme-pricing-demo.vercel.app` (public, no protection), verified with `check.mjs --expect buggy`. Use it as `TARGET_URL`. Trail #3 is the merged base pricing Trail.
 - **Isolation:** the headless sessions run with the operator's plugins disabled through a gitignored local settings file, no Rex on `PATH`, and `--disable-slash-commands`. Without that, personal plugins leak into the transcript and skew the code.
 - **Honesty:** the prompts are scripted by us. The write-up must say so.
 
