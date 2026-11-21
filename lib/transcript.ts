@@ -1,13 +1,13 @@
 import type { Message } from "./extract";
 
 type Part = { type?: string; text?: string };
-type Record_ = { type?: string; uuid?: string; isSidechain?: boolean; isMeta?: boolean; message?: { content?: string | Part[] } };
+type TranscriptRecord = { type?: string; uuid?: string; isSidechain?: boolean; isMeta?: boolean; message?: { content?: string | Part[] } };
 
 /** Claude Code JSONL transcript to the user and assistant text messages, keyed by the record uuid. */
 export function parseTranscript(jsonl: string): Message[] {
   const out: Message[] = [];
   for (const line of jsonl.split("\n")) {
-    let r: Record_;
+    let r: TranscriptRecord;
     try {
       r = JSON.parse(line);
     } catch {

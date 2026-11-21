@@ -97,7 +97,7 @@ async function selectRequirements(trailId: string): Promise<Pending[]> {
 }
 
 const headSha = async (cfg: Config, branch: string) =>
-  (await execGit("git", ["ls-remote", "origin", branch], { cwd: cfg.repoDir })).stdout.split("\t")[0] || "unknown";
+  (await execGit("git", ["ls-remote", "origin", branch], { cwd: cfg.repoDir })).stdout.split("\t")[0] || (() => { throw new Error(`branch ${branch} not found on origin`); })();
 
 /** One Trail push: sync merged Trails and this Trail, run every requirement in parallel, file findings. */
 export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId: string; passed: number; failed: number; errored: number }> {
@@ -110,11 +110,10 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
     }
   }
   const trail = await syncTrail(cfg, ref);
-  const sha = trail.branch ? await headSha(cfg, trail.branch) : "unknown";
+  const sha = trail.branch ? await headSha(cfg, trail.branch) : "no-branch";
   const reqs = await selectRequirements(trail.id);
   const runId = randomUUID();
   await db().query("insert into runs (id,trail_id,head_sha) values ($1,$2,$3)", [runId, trail.id, sha]);
-  await db().query("update trails set last_head_sha=$2 where id=$1", [trail.id, sha]);
   cfg.log?.(`run ${runId}: ${reqs.length} requirements (${reqs.filter((r) => r.kind === "new").length} new)`);
 
   const results: (CheckResult & { checkId: string })[] = [];
@@ -149,23 +148,28 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
     }
   });
 
-  for (const a of decideFindings(await openFindings(ref), results)) {
-    if (a.kind === "resolve") {
-      await resolveFinding(a.findingId, a.message, ref);
-      continue;
-    }
-    const findingId = await addFinding(a.requirementId, a.title, a.body, ref);
-    const checkId = results.find((x) => x.requirementId === a.requirementId)!.checkId;
-    await db().query(
-      "insert into bug_reports (id,check_id,finding_id,summary_md) values ($1,$2,$3,$4)",
-      [randomUUID(), checkId, findingId, `**${a.title}**\n\n${a.body}`],
-    );
-    cfg.log?.(`finding ${findingId} filed`);
-  }
-
   const passed = results.filter((r) => r.passed).length;
   const failed = results.length - passed;
-  await db().query("update runs set finished_at=now(), passed_count=$2, failed_count=$3 where id=$1", [runId, passed, failed]);
+  try {
+    for (const a of decideFindings(await openFindings(ref), results)) {
+      if (a.kind === "resolve") {
+        await resolveFinding(a.findingId, a.message, ref);
+        continue;
+      }
+      const findingId = await addFinding(a.requirementId, a.title, a.body, ref);
+      const checkId = results.find((x) => x.requirementId === a.requirementId)!.checkId;
+      await db().query(
+        "insert into bug_reports (id,check_id,finding_id,summary_md) values ($1,$2,$3,$4)",
+        [randomUUID(), checkId, findingId, `**${a.title}**\n\n${a.body}`],
+      );
+      cfg.log?.(`finding ${findingId} filed`);
+    }
+  } finally {
+    // The run row is always closed out, and an all-errored run shows as errored, not as 0 failures.
+    await db().query("update runs set finished_at=now(), passed_count=$2, failed_count=$3, errored_count=$4 where id=$1", [runId, passed, failed, errored]);
+  }
+  // Marked done only now, so a run that threw is picked up again on the next event.
+  await db().query("update trails set last_head_sha=$2 where id=$1", [trail.id, sha]);
   return { runId, passed, failed, errored };
 }
 

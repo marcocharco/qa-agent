@@ -42,5 +42,6 @@ if (process.argv.includes("--watch")) {
     clearTimeout(timer);
     timer = setTimeout(() => void runIfNew(), 5000);
   });
+  w.on("exit", (code) => { console.error(`entire trail watch exited (${code}); stopping`); process.exit(1); });
   cfg.log?.(`watching Trail ${trail}`);
 } else await closeDb();

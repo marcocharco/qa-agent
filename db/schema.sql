@@ -77,3 +77,4 @@ create table if not exists bug_reports (
 -- Skip re-extraction when a Trail's sources have not changed (Gemini credits are limited).
 alter table trails add column if not exists sources_hash text;
 create unique index if not exists requirements_trail_text on requirements (trail_id, lower(text));
+alter table runs add column if not exists errored_count int not null default 0;
