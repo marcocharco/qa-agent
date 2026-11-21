@@ -38,7 +38,7 @@ export type RequirementRow = {
 
 const reqCols = `r.id, r.trail_id, t.title as trail_title, r.text, r.type, r.confidence, r.testable, r.untestable_reason,
   r.status, r.source_kind, r.quote, r.edited_by_human`;
-const toReq = (r: Record<string, any>): RequirementRow => ({
+const toReq = (r: Record<string, never>): RequirementRow => ({
   id: r.id, trailId: r.trail_id, trailTitle: r.trail_title, text: r.text, type: r.type, confidence: r.confidence,
   testable: r.testable, untestableReason: r.untestable_reason, status: r.status, sourceKind: r.source_kind,
   quote: r.quote, edited: r.edited_by_human,
