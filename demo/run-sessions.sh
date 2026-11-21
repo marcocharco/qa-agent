@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Replays the scripted ACME sessions against a real headless Claude Code, one prompt at a time.
 #
-# usage: ./run-sessions.sh [--dry-run] [--yes] <empty-demo-repo-dir>
+# usage: ./run-sessions.sh [--dry-run] [--yes] [--existing] <demo-repo-dir>
+#   default: the dir must be empty (or only .git); the seed is copied in and committed first.
+#   --existing: the dir is already a clean git repo (seed committed, branch checked out); only the sessions run.
 #
 # env:
 #   SESSIONS       space separated session files to run (default: "01-base 02-annual-volume 03-fix")
@@ -16,25 +18,31 @@ SESSIONS="${SESSIONS:-01-base 02-annual-volume 03-fix}"
 TOOLS="Edit Write Read Bash(npm:*) Bash(npx:*) Bash(git:*)"
 PERM="acceptEdits"
 
-DRY=0; YES=0; TARGET=""
+DRY=0; YES=0; EXISTING=0; TARGET=""
 for a in "$@"; do
   case "$a" in
     --dry-run) DRY=1 ;;
     --yes) YES=1 ;;
+    --existing) EXISTING=1 ;;
     -*) echo "unknown flag $a" >&2; exit 2 ;;
     *) TARGET="$a" ;;
   esac
 done
-[ -n "$TARGET" ] || { echo "usage: $0 [--dry-run] [--yes] <empty-demo-repo-dir>" >&2; exit 2; }
+[ -n "$TARGET" ] || { echo "usage: $0 [--dry-run] [--yes] [--existing] <demo-repo-dir>" >&2; exit 2; }
 [ -d "$TARGET" ] || { echo "refusing: $TARGET is not a directory" >&2; exit 1; }
 TARGET="$(cd "$TARGET" && pwd)"
 
-# Safety check: empty, or only a .git entry.
-extra="$(ls -A "$TARGET" | grep -vx '.git' || true)"
-if [ -n "$extra" ]; then
-  echo "refusing: $TARGET is not empty. Found:" >&2
-  echo "$extra" | head -5 | sed 's/^/  /' >&2
-  exit 1
+# Safety check.
+if [ "$EXISTING" = 1 ]; then
+  [ -d "$TARGET/.git" ] || { echo "refusing: --existing needs a git repo at $TARGET" >&2; exit 1; }
+  if [ -n "$(git -C "$TARGET" status --porcelain)" ]; then echo "refusing: $TARGET has uncommitted changes" >&2; exit 1; fi
+else
+  extra="$(ls -A "$TARGET" | grep -vx '.git' || true)"
+  if [ -n "$extra" ]; then
+    echo "refusing: $TARGET is not empty. Found:" >&2
+    echo "$extra" | head -5 | sed 's/^/  /' >&2
+    exit 1
+  fi
 fi
 [ "$TARGET" != "$HERE" ] && [ "$TARGET" != "/" ] && [ "$TARGET" != "$HOME" ] || { echo "refusing: unsafe target" >&2; exit 1; }
 
@@ -49,7 +57,8 @@ split_prompts() { # file outdir
 
 echo "== Plan =="
 echo "target repo : $TARGET"
-echo "seed        : $HERE/seed (copied in, npm ci, build, first commit)"
+if [ "$EXISTING" = 1 ]; then echo "seed        : already in the repo (branch: $(git -C "$TARGET" branch --show-current))"; else echo "seed        : $HERE/seed (copied in, npm ci, build, first commit)"; fi
+echo "isolation  : user plugins disabled via .claude/settings.local.json, no Rex on PATH, --disable-slash-commands"
 echo "permissions : --permission-mode $PERM"
 echo "allowed     : $TOOLS"
 for s in $SESSIONS; do
@@ -64,14 +73,27 @@ if [ "$YES" != 1 ]; then
   printf "Proceed? [y/N] "; read -r ans; [ "$ans" = "y" ] || { echo aborted; exit 1; }
 fi
 
-# 1. seed + first commit
-cp -R "$HERE/seed/." "$TARGET/"
+# 1. seed + first commit (skipped with --existing)
 cd "$TARGET"
-[ -d .git ] || git init -q
-npm ci --silent
-npm run build >/dev/null
-git add -A
-git commit -q -m "seed: static ACME pricing UI"
+if [ "$EXISTING" = 0 ]; then
+  cp -R "$HERE/seed/." "$TARGET/"
+  [ -d .git ] || git init -q
+  npm ci --silent
+  npm run build >/dev/null
+  git add -A
+  git commit -q -m "seed: static ACME pricing UI"
+fi
+
+# Isolation: the sessions must not inherit the operator's personal plugins, skills or terminal hooks.
+mkdir -p .claude
+python3 - <<'PY'
+import json, os
+user = json.load(open(os.path.expanduser("~/.claude/settings.json")))
+off = {k: False for k, v in (user.get("enabledPlugins") or {}).items() if v}
+json.dump({"enabledPlugins": off}, open(".claude/settings.local.json", "w"), indent=2)
+PY
+grep -qx '.claude/settings.local.json' .git/info/exclude 2>/dev/null || echo '.claude/settings.local.json' >> .git/info/exclude
+CLEAN_PATH="$(echo "$PATH" | tr ':' '\n' | grep -vi 'rex' | paste -sd: -)"
 
 # 2. sessions
 for s in $SESSIONS; do
@@ -85,7 +107,8 @@ for s in $SESSIONS; do
     if [ "$first" = 1 ]; then mode=(--session-id "$sid"); first=0; else mode=(--resume "$sid"); fi
     model=(); [ -n "${CLAUDE_MODEL:-}" ] && model=(--model "$CLAUDE_MODEL")
     # prompt goes in on stdin, so the variadic --allowedTools cannot swallow it
-    claude -p "${mode[@]}" ${model[@]+"${model[@]}"} --permission-mode "$PERM" --allowedTools "$TOOLS" < "$p"
+    env -u REX_SERVER -u REX_SESSION -u REX_BLOCK PATH="$CLEAN_PATH" \
+      claude -p "${mode[@]}" ${model[@]+"${model[@]}"} --disable-slash-commands --permission-mode "$PERM" --allowedTools "$TOOLS" < "$p"
   done
   rm -rf "$tmp"
   echo; echo "=== build after $s ==="
