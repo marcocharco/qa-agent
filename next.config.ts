@@ -1,9 +1,7 @@
 import type { NextConfig } from "next";
 
+// Local-only dashboard that reads Postgres on every request, so Cache Components (static shells) are off.
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
   turbopack: {
     rules: {
       "*.css": {
