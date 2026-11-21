@@ -22,7 +22,7 @@ Agreed in Q&A on Nov 21. Rows marked *assumed* were not answered and can be chan
 | --- | --- |
 | Project | AI QA tool (not CarPool Chaos) |
 | Team / time / stack | Solo, 12–15 hours, TypeScript |
-| Demo target | A small toy shop built for the demo, no login, with planted bugs (bug list TBD) |
+| Demo target | A SaaS pricing page in `target/` ("add annual billing"), no login, with structural planted bugs. Replaced the toy shop on Nov 21. |
 | Coding agent | Claude Code, sessions captured by Entire |
 | UI | Full dashboard: requirements workspace, live run view, replay page, trail history |
 | Requirement control | Human can approve, edit and add requirements |
@@ -48,8 +48,8 @@ A company's on-call is paged after an error is logged. An agent drafts a fix PR 
 ## Decisions added in grilling (Nov 21)
 
 - Everything in the stretch list (levels 3 to 5) is now MVP, ranked by priority. Cut order from the bottom: history chart, then polish and token numbers, then Graph root cause.
-- Planted bugs: a bug manifest toggles each bug, plus a bug-free control build. Initial list: cart lost on refresh, discount applied twice. The list can change later.
-- Seed one merged "base shop" Trail, then the demo Trail, so regression is visible.
+- Planted bugs (structural, not one-line fixes), toggled by `target/bugs.json`, with a bug-free control build (`NEXT_PUBLIC_NO_BUGS=1`): (1) `staleCoupon`: the coupon discount is captured at apply time, so it goes stale when seats or billing change (the regression); (2) `roundedSeatPrice`: annual shows $15.20 per seat but totals $900.00 instead of $912.00; (3) `seatsResetOnToggle`: switching billing remounts the calculator and resets seats to 1. Verified in Chrome on both builds. Chat lines: "annual should be 20% cheaper", "keep their seats when they flip the toggle", "and the coupon should still work".
+- Seed one merged "base pricing" Trail (seats, coupon, trial signup), then the demo Trail, so regression is visible.
 - Failures create an Entire finding. A reviewer can override ("not a bug, this run" or "requirement is wrong"), which resolves it. A passing re-push auto-resolves it. No auto-retry.
 - Extraction caching is not needed yet, but the design must allow it if results are inconsistent.
 - Gemini does four jobs: extraction, goal compiling (careful QA-agent prompting), plain-English repro, root-cause triage.
@@ -190,7 +190,7 @@ The MVP is one complete Trail loop: push, extract, approve, run, fail, report, b
 **Priority order (updated Nov 21).** One ranked list replaces the MVP/stretch split. If behind by an hour, cut from the bottom.
 
 1. Spike and a **thin vertical slice** (see build plan checkpoint)
-2. Toy shop with bug manifest and control build, hosted preview, base and demo Trails
+2. Pricing page target with bug manifest and control build, hosted preview, base and demo Trails
 3. Orchestrator: extraction, goal compiler, parallel runs, results stored
 4. Bug report levels 1 to 2, findings, review and override, Brain write-back on approve
 5. Dashboard: workspace, live grid, replay page
@@ -215,7 +215,7 @@ Nice-to-have, only if time remains: nightly scheduled regression run with a morn
 **Checkpoint at hour 3:** one real requirement must flow end to end: a chat line becomes an extracted requirement, TinyFish returns a verdict, and an Entire finding is created. If the Trail-to-session link or the finding gate fails here, switch to the fallbacks (manual session attach, local gate) immediately and rescope. Only then widen to the full plan below.
 
 1. **Spike, 1.5 h:** enroll in TinyFish beta; `entire enable`; confirm `trail show/watch --json`, `finding add` from a plain script, Findings gate blocks `merge --dry-run`; one TinyFish run through a tunnel returning `passed:false`.
-2. **Toy shop + demo Trail, 1 h:** Next.js shop with planted bugs; record real Claude Code sessions that state the requirements.
+2. **Pricing page + demo Trail, 1 h:** Next.js pricing page with planted bugs; record real Claude Code sessions that state the requirements.
 3. **Orchestrator core, 3 h:** watcher, Gemini extraction with citations, goal compiler, parallel TinyFish runs, results into Postgres.
 4. **Reporting, 1.5 h:** findings, Markdown report, screenshot download, Brain write-back.
 5. **Dashboard, 3 h:** workspace, live grid, replay page, simple history chart.
@@ -240,7 +240,7 @@ The two biggest risks are the TinyFish beta gate and the undocumented link from 
 
 **Open questions**
 
-- [ ] Which planted bugs, and which chat lines state them? (deferred by Marco)
+- [x] Which planted bugs, and which chat lines state them? Decided Nov 21, see Decisions.
 - [ ] Does `trail show --json` include the description text and the merged state?
 - [ ] What fields does a TinyFish run's `steps` list hold, and is the action text enough for plain-English repro steps?
 - [ ] Which Gemini models for extraction vs triage (check current model list and free-tier limits)?
