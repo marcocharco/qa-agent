@@ -46,7 +46,6 @@ export default function RequirementRow({ r, showTrail = false }: { r: Req; showT
         {!r.testable && <p className="mt-2 text-sm text-muted">Not tested: {r.untestableReason ?? "no reason given"}</p>}
       </div>
       <div className="flex flex-wrap items-start gap-2 md:justify-end">
-        <ReceiptChip requirementId={r.id} kind={r.sourceKind} />
         {!editing && <button className={btnGhost} onClick={() => setEditing(true)}>Edit</button>}
         {r.testable && (r.status === "proposed" || r.status === "rejected") && <button className={btnGhost} disabled={pending} onClick={() => start(() => setStatus(r.id, "approved"))}>Approve</button>}
         {r.status !== "rejected" && <button className={btnGhost} disabled={pending} onClick={() => start(() => setStatus(r.id, "rejected"))}>Reject</button>}
