@@ -18,7 +18,7 @@ Read `SPEC.md` first (decisions, priority order, prize alignment). This file is 
 ## Run it
 - `.env.local` has TinyFish, Gemini, `DATABASE_URL`, `TARGET_URL` (buggy) and `TARGET_CONTROL_URL`. Never commit it, never paste keys or the personal email in chat.
 - `npm test`, `npm run typecheck`, `npx eslint .`. Scripts: `npx tsx --env-file=.env.local scripts/<file>.mts`.
-- Target sites: `TARGET_URL=https://acme-pricing-demo.vercel.app` is the demo repo's buggy branch (Trail #4, public, verified with `demo/verify/check.mjs --expect buggy`). Also set `ENTIRE_PROJECT=gh/marcocharco`, `TARGET_REPO_DIR=/Users/marco/Developer/acme-pricing-demo`, and run `scripts/orchestrate.mts 4`. `TARGET_CONTROL_URL` will point at the fixed build once session 3 is deployed. The old `receipts-demo-*` sites from `target/` are retired for the demo.
+- Target sites: `TARGET_URL=https://acme-pricing-demo.vercel.app` is the demo repo's buggy branch (Trail #4, public, verified with `demo/verify/check.mjs --expect buggy`). Also set `ENTIRE_PROJECT=gh/marcocharco`, `TARGET_REPO_DIR=/Users/marco/Developer/acme-pricing-demo`, and run `scripts/orchestrate.mts 4`. `TARGET_CONTROL_URL=https://acme-pricing-demo-fixed.vercel.app` is the fixed build (branch `feat/annual-volume-fixed`, verified `--expect correct`) for the green re-run. The old `receipts-demo-*` sites from `target/` are retired for the demo.
 
 ## Gotchas learned the hard way
 - TinyFish: always read `result.passed`, never the run status. Sync `agent.run` has no `streaming_url`; use `agent.stream`. Default concurrency is 2 runs, ask for more. Compiler steps must be intent-level ("set seats to 5"), not control-level.
