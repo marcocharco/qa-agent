@@ -47,4 +47,11 @@ describe("renderGoal", () => {
     const goal = renderGoal({ preconditions: [], steps: ["A", "B", "C"], expected: "X" });
     expect(goal).toMatch(/1\. A\n2\. B\n3\. C/);
   });
+
+  it("tells the agent the expected result is not a step, so failed_step stays within the numbered steps", () => {
+    const goal = renderGoal({ preconditions: [], steps: ["A", "B", "C"], expected: "X" });
+    expect(goal).toContain("The expected result is not a step.");
+    expect(goal).toContain("failed_step must be a step number from 1 to 3");
+    expect(goal).toContain("report the last step (3)");
+  });
 });

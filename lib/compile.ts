@@ -50,7 +50,7 @@ Expected result: ${spec.expected}
 
 Do exactly the steps above and nothing else. If any step can't be completed exactly as written, or the page differs from what the steps assume, stop and report which step failed. Do not work around problems and do not retry a failed action.
 Report only what you actually saw on the page, quoting visible text in "reason". Never assume something passed.
-Set failed_step to null if every step passed.`;
+The expected result is not a step. failed_step must be a step number from 1 to ${spec.steps.length}. Set failed_step to null if every step passed. If all steps could be done but the expected result is not what you saw, report the last step (${spec.steps.length}).`;
 }
 
 export async function compileRequirement(
