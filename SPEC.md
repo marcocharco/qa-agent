@@ -14,6 +14,47 @@ Nov 21, 2026 · @Marco Chen
 
 **Constraints:** solo build, 12–15 usable hours, TypeScript.
 
+## Status (Nov 21, evening)
+
+Two sessions are building in parallel. **Product** owns this repo except `demo/`. **Demo** owns `demo/` and the separate repo `marcocharco/acme-pricing-demo`. See `HANDOFF.md` for the product side's run instructions.
+
+**Done and verified**
+
+- Entire set up on both repos (mirror, Trails, Gates with Agent Review at a medium threshold, approvals off). The gating loop works end to end: an open `high` finding blocks `merge`, resolving it clears the gate.
+- Core seams, 21 unit tests: goal compiler, requirement extraction with citation checks, finding lifecycle (create, auto-resolve, reviewer override), verdict mapping (the agent's verdict decides, errored runs never pass).
+- Adapters, verified live: Gemini (model fallback, backoff, quota errors fall through), TinyFish `agent.stream` in strict mode, Entire CLI findings.
+- First live loop: Gemini compiled four requirements, TinyFish ran them in parallel on the live site, findings landed on a real Trail. Caught two true positives and one false failure, resolved through the override flow.
+- Local Postgres schema and migrate script.
+- Whole-Trail orchestrator (`lib/orchestrator.ts`, `scripts/orchestrate.mts <trail> [--watch]`): syncs a Trail and its sessions, extracts requirements, compiles, runs in a pool, persists to Postgres, files findings. Reviewed, not yet run against the demo Trail.
+- ACME pricing page fixture in `target/` with four conditional bugs and a bug-free control build (verified in Chrome). The two hosted copies still show the old design and need a redeploy.
+- Demo kit in `demo/`: static ACME seed, three scripted sessions, answer key, driver with session isolation, Chrome verifier.
+- Demo repo: seed pushed, session 1 run through a real headless Claude Code and merged as Trail #3 (PR #1). Entire linked the session to the Trail on its own, and the checkpoint scanned clean.
+
+**In progress**
+
+- Getting the four bugs to land in session 2 (see "Demo repo and scripted sessions").
+
+**Left, demo side**
+
+1. Land the bugs, run the real session 2 on `feat/annual-volume`, scan the checkpoint, open the demo Trail (#4) and leave it open.
+2. Deploy the buggy branch to Vercel as the "live site" target (treated as staging in the pitch).
+3. Run the fix session (session 3) ahead of time, verify with `--expect correct`, redeploy for the green re-run. Keep it ready for the fix beat.
+4. Record the demo-repo facts for the product session (Trail numbers, URL, repo path) and merge the `demo-kit` branch to `main` at a clean boundary.
+
+**Left, product side (priority order below)**
+
+- Run the orchestrator live on the demo Trail end to end.
+- Bug report levels 1 and 2 with Markdown export, reviewer override, Brain write-back on approve.
+- Dashboard: requirements workspace, live grid, replay page (needs step screenshots from the TinyFish runs API).
+- `entire why` prompt attribution, Graph token-savings measurement, Trail merge-recommendation comment, the prevention beat, URL mode on a real site.
+- Eval: TinyFish vs a Claude browser agent on the buggy and control builds.
+
+**Left, shared and submission**
+
+- Check the Gemini key is on a billed project (it was on the free tier, 20 requests a day per model).
+- Scan every checkpoint for emails and keys before any `entire checkpoint push`. Eight early checkpoints on `qa-agent` contain a personal email, a known and accepted exposure.
+- Rehearsal, backup video, cached results, Devpost write-up (it must say the demo chat history is scripted), X or LinkedIn post tagging TinyFish.
+
 ## Decisions
 
 Agreed in Q&A on Nov 21. Rows marked *assumed* were not answered and can be changed.
@@ -77,6 +118,18 @@ A company's on-call is paged after an error is logged. An agent drafts a fix PR 
 - TinyFish strict mode verified live: a wrong expectation returns `COMPLETED` with `passed: false`. The sync call returns no `streaming_url`, so the orchestrator must use async runs for the live grid.
 - `gemini-3.8-flash` is the default model (`2.5-flash` is retired). Expect 503 overloads, so the adapter needs a retry and timeout.
 - Commit author is the GitHub noreply address, so the public repo does not expose a personal email.
+
+## Demo repo and scripted sessions (Nov 21)
+
+The demo history lives in a separate repo, `marcocharco/acme-pricing-demo`, so Receipts watches a customer style repo and its regression suite is not polluted by Receipts' own development Trails.
+
+- **Seed:** a static ACME pricing page (all the UI, no logic), committed first.
+- **Session 1, Trail #3, merged:** a real headless Claude Code session with scripted developer prompts wires seats, the Team minimum and SAVE10 correctly. This is the regression suite. Entire links the session to the Trail (`entire trail sessions`). Project Trails share one number sequence across repos, and a merged change shows `phase: complete` while the Trail's `status` stays `open`, so key on the change being merged.
+- **Session 2, the demo Trail (#4, left open):** adds annual billing, the Team volume discount and coupon handling, and ends with the four bugs. **Session 3** is the fix, run ahead of time and kept for the fix beat.
+- **Isolation:** the headless sessions run with the operator's plugins disabled through a gitignored local settings file, no Rex on `PATH`, and `--disable-slash-commands`. Without that, personal plugins leak into the transcript and skew the code.
+- **Honesty:** the prompts are scripted by us. The write-up must say so.
+
+**Finding: a vigilant agent will not plant a hidden bug from a contradictory prompt.** In session 2 the agent caught every contradiction and silently fixed it in favor of the earlier stated requirement ("one deviation from what you asked: `over: 9`, not `over: 10`", "a floor of 1 would let the raw count drop while the display stays at 3"). All four bugs failed to land, and the same was true of the `haiku` model. So the bugs now come from developer decisions stated explicitly (deferring the coupon on the volume path until finance confirms, a strict comparison, a raw seat state, a coupon computed from the list price), and if that is not enough, from a pasted patch. Each remains traceable to one prompt. This also makes a point for Receipts itself: agent code review caught the contradictions, but a stated shortcut is exactly what slips past.
 
 ## Users and modes
 
@@ -189,20 +242,20 @@ The MVP is one complete Trail loop: push, extract, approve, run, fail, report, b
 
 **Priority order (updated Nov 21).** One ranked list replaces the MVP/stretch split. If behind by an hour, cut from the bottom.
 
-1. Spike and a **thin vertical slice** (see build plan checkpoint)
-2. Pricing page target with bug manifest and control build, hosted preview, base and demo Trails
-3. Orchestrator: extraction, goal compiler, parallel runs, results stored
-4. Bug report levels 1 to 2, findings, review and override, Brain write-back on approve
-5. Dashboard: workspace, live grid, replay page
-6. `entire why` and prompt attribution (levels 4 to 5)
-7. **Graph token-savings measurement** (triage with and without `entire graph`, report the numbers)
-8. Trail comment with merge recommendation ("does the change match the intent?")
-9. **Prevention beat for the demo:** a fresh Claude Code session recalls the requirement from Brain and avoids the bug
-10. **URL mode against a real live site** as one short demo beat
-11. **Eval:** TinyFish vs Claude browser agent (required before submission, scheduled later)
-12. Gemini root cause (level 3)
-13. Token numbers, polish
-14. Trail history chart (plain table until then)
+1. Spike and a **thin vertical slice** (see build plan checkpoint) [done]
+2. Pricing page target with bug manifest and control build, hosted preview, base and demo Trails [target and base Trail done, demo Trail in progress]
+3. Orchestrator: extraction, goal compiler, parallel runs, results stored [implemented, not yet run live on the demo Trail]
+4. Bug report levels 1 to 2, findings, review and override, Brain write-back on approve [partial: finding logic done, report, override UI and Brain todo]
+5. Dashboard: workspace, live grid, replay page [todo]
+6. `entire why` and prompt attribution (levels 4 to 5) [todo, needs the demo Trail]
+7. **Graph token-savings measurement** (triage with and without `entire graph`, report the numbers) [todo]
+8. Trail comment with merge recommendation ("does the change match the intent?") [todo]
+9. **Prevention beat for the demo:** a fresh Claude Code session recalls the requirement from Brain and avoids the bug [todo]
+10. **URL mode against a real live site** as one short demo beat [todo]
+11. **Eval:** TinyFish vs Claude browser agent (required before submission, scheduled later) [todo]
+12. Gemini root cause (level 3) [todo]
+13. Token numbers, polish [todo]
+14. Trail history chart (plain table until then) [todo]
 
 Nice-to-have, only if time remains: nightly scheduled regression run with a morning report (the "AI employee" framing), Playwright repro export, exploratory mode.
 
@@ -210,7 +263,7 @@ Nice-to-have, only if time remains: nightly scheduled regression run with a morn
 
 **Out of scope:** auth-protected targets, Jira/GitHub API integrations, auto-launching Claude Code fixes, multi-repo Trails, hosted deployment of Receipts itself.
 
-**Build plan (about 13.5 hours)**
+**Original build plan (about 13.5 hours, superseded by the status section above, kept for reference)**
 
 **Checkpoint at hour 3:** one real requirement must flow end to end: a chat line becomes an extracted requirement, TinyFish returns a verdict, and an Entire finding is created. If the Trail-to-session link or the finding gate fails here, switch to the fallbacks (manual session attach, local gate) immediately and rescope. Only then widen to the full plan below.
 
