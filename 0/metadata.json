@@ -1,0 +1,176 @@
+{
+  "cli_version": "0.13.4",
+  "checkpoint_id": "01M7ZZN919XSHMBHXZTY9JJ484",
+  "session_id": "92c2823b-6e84-4674-9412-7f75209063cc",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-21T21:19:40.852322Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "SPEC.md"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-sonnet-5-5",
+  "turn_id": "cef2a4c788fc",
+  "checkpoint_transcript_start": 940,
+  "transcript_lines_at_start": 940,
+  "compact_transcript_start": 105,
+  "token_usage": {
+    "input_tokens": 10,
+    "cache_creation_tokens": 2855,
+    "cache_read_tokens": 758685,
+    "output_tokens": 2414,
+    "api_call_count": 4
+  },
+  "session_token_usage": {
+    "input_tokens": 212,
+    "cache_creation_tokens": 153463,
+    "cache_read_tokens": 11542008,
+    "output_tokens": 65785,
+    "api_call_count": 88
+  },
+  "redaction": {
+    "replacements": 20,
+    "layers": {
+      "betterleaks": 2,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 0,
+      "credentialed_uri": 0,
+      "entropy": 18,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  },
+  "skill_events_version": 1,
+  "skill_events": [
+    {
+      "id": "claude-skill-toolu_01TrN8R2jvCDSm7xccqjdsF6",
+      "event_type": "tool_invocation",
+      "skill": {
+        "name": "mattpocock-skills:grill-me"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "skill_tool_use",
+        "confidence": "explicit"
+      },
+      "turn_id": "ab542110d41e",
+      "transcript_anchor": {
+        "unit": "line",
+        "start": 36,
+        "end": 37,
+        "entry_ids": [
+          "f17df0e9-15ae-44a1-a079-ad46a6626022"
+        ],
+        "tool_use_id": "toolu_01TrN8R2jvCDSm7xccqjdsF6"
+      },
+      "native": {
+        "tool_name": "Skill",
+        "tool_use_id": "toolu_01TrN8R2jvCDSm7xccqjdsF6"
+      },
+      "collapse": {
+        "target": "tool_pair",
+        "label": "Skill: mattpocock-skills:grill-me",
+        "default_collapsed": true
+      }
+    },
+    {
+      "id": "claude-skill-toolu_01FByfv6tdTiq2a9iwfdKXz9",
+      "event_type": "tool_invocation",
+      "skill": {
+        "name": "mattpocock-skills:grilling"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "skill_tool_use",
+        "confidence": "explicit"
+      },
+      "turn_id": "ab542110d41e",
+      "transcript_anchor": {
+        "unit": "line",
+        "start": 56,
+        "end": 57,
+        "entry_ids": [
+          "74875ffb-169d-47d8-8f73-bf1211737efb"
+        ],
+        "tool_use_id": "toolu_01FByfv6tdTiq2a9iwfdKXz9"
+      },
+      "native": {
+        "tool_name": "Skill",
+        "tool_use_id": "toolu_01FByfv6tdTiq2a9iwfdKXz9"
+      },
+      "collapse": {
+        "target": "tool_pair",
+        "label": "Skill: mattpocock-skills:grilling",
+        "default_collapsed": true
+      }
+    },
+    {
+      "id": "claude-skill-toolu_01NnUG742Hrh8tcw7eXunG3z",
+      "event_type": "tool_invocation",
+      "skill": {
+        "name": "mattpocock-skills:implement"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "skill_tool_use",
+        "confidence": "explicit"
+      },
+      "turn_id": "ab542110d41e",
+      "transcript_anchor": {
+        "unit": "line",
+        "start": 290,
+        "end": 291,
+        "entry_ids": [
+          "e905cc31-1903-406f-a261-952dcac4b580"
+        ],
+        "tool_use_id": "toolu_01NnUG742Hrh8tcw7eXunG3z"
+      },
+      "native": {
+        "tool_name": "Skill",
+        "tool_use_id": "toolu_01NnUG742Hrh8tcw7eXunG3z"
+      },
+      "collapse": {
+        "target": "tool_pair",
+        "label": "Skill: mattpocock-skills:implement",
+        "default_collapsed": true
+      }
+    },
+    {
+      "id": "claude-skill-toolu_012bKMDa1pVUKfVoXsfGKk4V",
+      "event_type": "tool_invocation",
+      "skill": {
+        "name": "mattpocock-skills:tdd"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "skill_tool_use",
+        "confidence": "explicit"
+      },
+      "turn_id": "ab542110d41e",
+      "transcript_anchor": {
+        "unit": "line",
+        "start": 298,
+        "end": 299,
+        "entry_ids": [
+          "038675ba-4a9d-42b7-a7f0-a7f353e95d3b"
+        ],
+        "tool_use_id": "toolu_012bKMDa1pVUKfVoXsfGKk4V"
+      },
+      "native": {
+        "tool_name": "Skill",
+        "tool_use_id": "toolu_012bKMDa1pVUKfVoXsfGKk4V"
+      },
+      "collapse": {
+        "target": "tool_pair",
+        "label": "Skill: mattpocock-skills:tdd",
+        "default_collapsed": true
+      }
+    }
+  ],
+  "session_metrics": {
+    "turn_count": 8
+  }
+}
