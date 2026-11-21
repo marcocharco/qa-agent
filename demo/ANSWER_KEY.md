@@ -31,3 +31,7 @@ Names below are the ones the real session 1 produced in `acme-pricing-demo`: `ca
 - A and D both live in `annualQuote()`. A comes from 02/05, D from 02/09. The A requirement is still stated for annual in 02/03, which is what Receipts should cite.
 - Session 3 prompt 1 pastes the report with the four "Likely cause" lines. 03/03 merges the two quote functions back into one.
 - Real agents drift. After each session check the code and run `verify/check.mjs` (`--expect buggy` after session 2, `--expect correct` after session 3). If a bug did not land, reword the prompt that should have introduced it, not the requirement.
+
+## What actually plants the bugs (learned Nov 21)
+A vigilant agent resolves a contradiction between a later prompt and an earlier requirement in favor of the earlier requirement, and says so. Both the default model and `haiku` produced a fully correct session 2 from the first set of prompts. What works is the developer stating the decision explicitly, with a reason, so following it is correct behavior: keep the coupon off the volume path until finance signs off (A), strict `>` and "don't change the 10" (B), raw seat state "not the plan's min" and "don't feed the clamped number to the quote" (C), coupon computed from the list price total "same way in both paths" (D). Verified in a scratch clone: all four land.
+

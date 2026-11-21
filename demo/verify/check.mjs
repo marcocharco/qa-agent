@@ -22,7 +22,8 @@ async function read(page, plan) {
     total: m(/Total: (\$[\d,.]+ per \w+)/),
     subtotal: m(/Subtotal: (\$[\d,.]+)/),
     volume: m(/Volume discount \(5%\): (-\$[\d,.]+)/),
-    coupon: m(/Discount \(SAVE10\): (-\$[\d,.]+)/),
+    // A "-$0.00" line is the same as no discount line: the coupon did nothing.
+    coupon: (() => { const c = m(/Discount \(SAVE10\): (-\$[\d,.]+)/); return c === "-$0.00" ? NONE : c; })(),
     billed: m(/(Billed \$[\d,.]+ yearly)/),
     perSeat: m(/Price per seat: (\$[\d,.]+)/),
   };
@@ -33,7 +34,8 @@ async function fresh() {
   await page.goto(url);
   await page.getByLabel("Increase Pro seats").waitFor();
   const seatsNow = async (plan) => Number(await page.getByLabel(`${plan} seat count`).innerText());
-  const click = async (label, n) => { for (let i = 0; i < n; i++) { const b = page.getByLabel(label); if (!(await b.isEnabled())) return; await b.click(); } };
+  // Skip only natively disabled buttons. aria-disabled buttons stay clickable, and Playwright's isEnabled() would wrongly skip them, so force the click.
+  const click = async (label, n) => { for (let i = 0; i < n; i++) { const b = page.getByLabel(label); if (await b.evaluate((el) => el.disabled)) return; await b.click({ force: true }); } };
   return {
     page,
     shown: seatsNow,

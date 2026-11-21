@@ -14,19 +14,19 @@ i want to be sure how the coupon behaves with all this. the order has to be annu
 also, general thing, the pricing page should feel more trustworthy. no idea what exactly, just more legit. don't change any code for now, just give me a few ideas and i'll pick
 
 [5]
-pricing.ts is getting hard to follow with all the annual and volume ifs. split calculateQuote into monthlyQuote and annualQuote and have PricingCard pick one based on billing. monthlyQuote can stay the way it is. for annualQuote do the 20% off the seat price first, then branch on the plan: plans with a volume tier get the volume discount and return, plans without one get the coupon and return. we can merge the two paths later once it settles
+pricing.ts is getting hard to follow with all the annual and volume ifs. split calculateQuote into monthlyQuote and annualQuote and have PricingCard pick one based on billing. monthlyQuote can stay the way it is. for annualQuote do the 20% off the seat price first, then branch on the plan: plans with a volume tier get the volume discount and return, plans without one get the coupon and return. finance hasn't signed off on stacking the coupon with volume pricing, so keep the coupon completely off the volume path for now and we'll add it back once they confirm
 
 [6]
 the greyed out minus and plus buttons look broken on mobile. make the stepper buttons always clickable, and when you're at the limit clicking should just do nothing
 
 [7]
-clampSeats gets applied in the setters and again inside calculateQuote, which is messy. keep the seat state raw in PricingCard: decrease is Math.max(1, s - 1), increase is Math.min(maxSeats, s + 1), calculateQuote just prices the seats it's given, and we only clamp up to the plan's min where we show the number. we'll want a typed seat input later and raw state makes that easier
+clampSeats gets applied in the setters and again inside calculateQuote, which is messy. keep the seat state raw in PricingCard: decrease is literally Math.max(1, s - 1), not the plan's min, because the typed seat input we're adding next will set any number and the state has to be able to hold it. increase is Math.min(maxSeats, s + 1). the quote functions get that raw seats state, the same variable the setters change, and price exactly that. we only clamp up to the plan's min for the number we display. please don't put the plan min back into the decrease and don't feed the clamped display number to the quote
 
 [8]
-can you pull the magic numbers in pricing.ts into named constants, the 0.8 and the 12 months. and for the team volume tier put it in PLAN_CONFIGS as volume: { over: 10, rate: 0.05 }, the discount applies once they're over 10 seats. use one helper for it so monthlyQuote and annualQuote share it
+can you pull the magic numbers in pricing.ts into named constants, the 0.8 and the 12 months. and for the team volume tier put it in PLAN_CONFIGS as volume: { over: 10, rate: 0.05 } and use a strict seats > volume.over in one shared helper for monthlyQuote and annualQuote. the config should read 10 like the pricing doc says, please don't change that number to make the comparison come out different
 
 [9]
-the coupon math is now written twice, once in monthlyQuote and once in annualQuote. pull it into one couponFor(listCents) helper that both use. in annualQuote feed it the list price total, seats times the plain monthly price times 12, since that's the same number the monthly path feeds it (seats times monthly price), then take the result off the annual total. monthly stays as is
+the coupon math is now written twice, once in monthlyQuote and once in annualQuote. pull it into one couponFor(listCents) helper that both use. in annualQuote feed it the list price total, seats times the plain monthly price times 12, same number the monthly path uses (seats times monthly price), then take the result off the annual total. i know annual is discounted but i want the coupon computed the same way in both paths, so don't switch it to the discounted annual subtotal
 
 [10]
 run a build and tell me if anything is off
