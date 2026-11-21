@@ -72,6 +72,10 @@ A company's on-call is paged after an error is logged. An agent drafts a fix PR 
 - Trails must be enabled per repo by an admin (Settings > Trails on entire.com), otherwise `trail create` refuses.
 - TinyFish TypeScript SDK is `@tiny-fish/sdk` (`client.agent.run` with `agent_config: { mode: "strict", max_steps }` and `output_schema`). Strict mode and `max_steps` are beta, and enrollment is done.
 - A hosted Vercel preview needs the Deployment Protection bypass secret in the URL (`x-vercel-protection-bypass`). `COMPLETED` run status does not mean the test passed, so always read `result.passed`.
+- **Gating loop verified end to end (hour-3 checkpoint passed for Entire).** With gates enabled and Agent Review set to a medium threshold, an open `high` finding fails the findings gate and `trail merge --dry-run` reports "not mergeable". Resolving the finding passes the gate. Receipts files failures as `high`. The approvals gate also blocks until someone runs `entire trail approve` (or approves in the UI), so the demo's "gate opens" beat needs that click. Bypass policy is "nobody".
+- Findings have no title field, only a body, so Receipts puts the requirement text first in the body.
+- TinyFish strict mode verified live: a wrong expectation returns `COMPLETED` with `passed: false`. The sync call returns no `streaming_url`, so the orchestrator must use async runs for the live grid.
+- `gemini-3.8-flash` is the default model (`2.5-flash` is retired). Expect 503 overloads, so the adapter needs a retry and timeout.
 - Commit author is the GitHub noreply address, so the public repo does not expose a personal email.
 
 ## Users and modes
