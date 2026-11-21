@@ -10,7 +10,7 @@ Nov 21, 2026 · @Marco Chen
 
 **Solution.** On every push to an Entire Trail, Receipts extracts requirements from the Trail and its sessions, lets a human approve or edit them, runs them as strict browser tests against a preview, and blocks the merge with an Entire finding when one fails.
 
-**Prize targets (in order):** TinyFish "Hire Your First AI Employee" · MLH Best Use of Gemini API · MLH Best Use of Entire · Organizers' Choice: Most Adventurous · bonus: MLH Best Use of Tiger Data (run history storage).
+**Prize targets (in order):** TinyFish "Hire Your First AI Employee" · MLH Best Use of Gemini API · MLH Best Use of Entire · Organizers' Choice: Most Adventurous.
 
 **Constraints:** solo build, 12–15 usable hours, TypeScript.
 
@@ -34,7 +34,7 @@ Agreed in Q&A on Nov 21. Rows marked *assumed* were not answered and can be chan
 | Entire | Core of PR mode; use as many features as possible (Trails, Sessions, Graph, Brain, `why`) |
 | Brain | Approved requirements are written to Brain automatically |
 | Attribution | Zoomable bug report, from summary down to the prompt that introduced the bug |
-| Storage | Postgres on Tiger Data |
+| Storage | Local Postgres (Homebrew postgresql@17). Tiger Data dropped Nov 21. |
 | Re-push behaviour | *Assumed:* keep approved and edited requirements, mine only new messages, flag superseded ones |
 | Frontend | *Assumed:* Next.js + Tailwind + shadcn/ui in one repo |
 | Name | *Assumed:* Receipts |
@@ -64,7 +64,6 @@ A company's on-call is paged after an error is logged. An agent drafts a fix PR 
 - **Entire:** uses Trails (trigger, gate, merge recommendation), Sessions (requirement source), Brain (write on approve, recall in the prevention beat), Graph (token-savings measurement) and `why`. Receipts itself is built on Entire, with a Trail per feature and sessions captured.
 - **TinyFish:** the job is QA. Strict-mode parallel browsers, a live-site beat in URL mode, and the eval against a Claude browser agent as evidence of smart use. The demo is posted on X or LinkedIn tagging TinyFish.
 - **Gemini:** extraction, goal compiling, repro writing and root-cause triage. Not optimized further.
-- **Tiger Data:** Postgres run history, a free bonus.
 
 ## Spike findings (Nov 21)
 
@@ -129,7 +128,7 @@ Levels 3–5 show only when the data exists, so the report degrades cleanly to l
 **Trail history**
 
 - Runs per Trail and commit over time: pass rate, duration, failures.
-- Stored as time series in Tiger Data.
+- Stored in local Postgres, indexed by Trail and start time.
 
 **Exports**
 
@@ -159,7 +158,7 @@ Sources: [Trails](https://docs.entire.com/guides/trails/overview.md), [trail CLI
 
 Everything runs on your laptop in one TypeScript repo: Next.js serves the dashboard and API routes, and a long-running Node worker does the orchestration. TinyFish browsers reach the toy shop through the tunnel.
 
-**Stack:** Next.js + Tailwind + shadcn/ui · Node worker (`child_process` for the Entire CLI) · `@google/genai` with JSON-schema output · TinyFish TypeScript SDK · Postgres on Tiger Data (hypertable for runs) · `cloudflared` quick tunnel.
+**Stack:** Next.js + Tailwind + shadcn/ui · Node worker (`child_process` for the Entire CLI) · `@google/genai` with JSON-schema output · TinyFish TypeScript SDK · local Postgres · `cloudflared` quick tunnel.
 
 **Data model**
 
@@ -167,7 +166,7 @@ Everything runs on your laptop in one TypeScript repo: Next.js serves the dashbo
 | --- | --- |
 | trails | id, title, description, branch, state (open/merged), last\_head\_sha |
 | requirements | id, trail\_id, text, type, confidence, testable, status, source\_kind (description/session/manual), source\_session\_id, source\_message\_id, quote, brain\_path, edited\_by\_human |
-| runs | id, trail\_id, head\_sha, started\_at, finished\_at, passed\_count, failed\_count (time series) |
+| runs | id, trail\_id, head\_sha, started\_at, finished\_at, passed\_count, failed\_count |
 | checks | id, run\_id, requirement\_id, tinyfish\_run\_id, goal, passed, failed\_step, reason, streaming\_url, video\_path, duration\_ms |
 | steps | check\_id, index, action, purpose, screenshot\_path |
 | bug\_reports | id, check\_id, finding\_id, summary\_md, repro\_md, file, line, commit\_sha, checkpoint\_id, prompt\_session\_id, prompt\_message\_id |
@@ -213,7 +212,7 @@ Nice-to-have, only if time remains: nightly scheduled regression run with a morn
 
 1. **Spike, 1.5 h:** enroll in TinyFish beta; `entire enable`; confirm `trail show/watch --json`, `finding add` from a plain script, Findings gate blocks `merge --dry-run`; one TinyFish run through a tunnel returning `passed:false`.
 2. **Toy shop + demo Trail, 1 h:** Next.js shop with planted bugs; record real Claude Code sessions that state the requirements.
-3. **Orchestrator core, 3 h:** watcher, Gemini extraction with citations, goal compiler, parallel TinyFish runs, results into Tiger Data.
+3. **Orchestrator core, 3 h:** watcher, Gemini extraction with citations, goal compiler, parallel TinyFish runs, results into Postgres.
 4. **Reporting, 1.5 h:** findings, Markdown report, screenshot download, Brain write-back.
 5. **Dashboard, 3 h:** workspace, live grid, replay page, simple history chart.
 6. **Stretch, 1.5 h:** root cause with Graph, then `entire why`.
