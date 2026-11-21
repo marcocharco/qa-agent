@@ -1,0 +1,5 @@
+don't use an actual preview, we'll just say that we would use this on a staging site but run it on our 'live site' as is. continue to implement with /mattpocock-skills:implement
+
+---
+
+for the demo, can we just come up with the prompt history, and go back and forth with it. Can you use a subagent to do that to launch in parallel.then make sure the final state is the same as what it is now. Do we need a separate repo for that?
