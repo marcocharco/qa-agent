@@ -22,7 +22,7 @@ Agreed in Q&A on Nov 21. Rows marked *assumed* were not answered and can be chan
 | --- | --- |
 | Project | AI QA tool (not CarPool Chaos) |
 | Team / time / stack | Solo, 12–15 hours, TypeScript |
-| Demo target | A SaaS pricing page in `target/` ("add annual billing"), no login, with structural planted bugs. Replaced the toy shop on Nov 21. |
+| Demo target | ACME, a SaaS pricing page in `target/` with Pro and Team cards ("add annual billing and volume pricing"), no login, with planted bugs. Replaced the toy shop on Nov 21. |
 | Coding agent | Claude Code, sessions captured by Entire |
 | UI | Full dashboard: requirements workspace, live run view, replay page, trail history |
 | Requirement control | Human can approve, edit and add requirements |
@@ -48,8 +48,8 @@ A company's on-call is paged after an error is logged. An agent drafts a fix PR 
 ## Decisions added in grilling (Nov 21)
 
 - Everything in the stretch list (levels 3 to 5) is now MVP, ranked by priority. Cut order from the bottom: history chart, then polish and token numbers, then Graph root cause.
-- Planted bugs (structural, not one-line fixes), toggled by `target/bugs.json`, with a bug-free control build (`NEXT_PUBLIC_NO_BUGS=1`): (1) `staleCoupon`: the coupon discount is captured at apply time, so it goes stale when seats or billing change (the regression); (2) `roundedSeatPrice`: annual shows $15.20 per seat but totals $900.00 instead of $912.00; (3) `seatsResetOnToggle`: switching billing remounts the calculator and resets seats to 1. Verified in Chrome on both builds. Chat lines: "annual should be 20% cheaper", "keep their seats when they flip the toggle", "and the coupon should still work".
-- Seed one merged "base pricing" Trail (seats, coupon, trial signup), then the demo Trail, so regression is visible.
+- Planted bugs (conditional and realistic, not visible on the happy path), toggled by `target/bugs.json`, with a bug-free control build (`NEXT_PUBLIC_NO_BUGS=1`). Pricing rules: Pro $19/seat; Team $29/seat, minimum 3 seats, 5% off at 10 or more seats; annual is 20% off; coupon SAVE10 is 10% off, applied after annual and volume. Bugs: (A, the regression) `couponMissesTeamAnnual`: SAVE10 silently does nothing on Team in annual mode; (B) `volumeDiscountOffByOne`: the 5% volume discount starts at 11 seats, not 10; (C) `teamMinSeatsDisplayOnly`: pressing minus below 3 shows 3 seats but prices 1 or 2; (D) `annualCouponWrongBase`: in annual mode the coupon is taken off the pre-annual price, so Pro 5 seats annual shows $798.00 instead of $820.80. Verified in Chrome on both builds: buggy vs control values are B $290.00 vs $275.50, C $29.00 vs $87.00, D $798.00 vs $820.80, A $835.20 vs $751.68. Chat lines such as "10 or more seats should get 5% off", "Team needs at least 3 seats", "annual should be 20% cheaper and the coupon should still work".
+- Seed one merged "base pricing" Trail (Pro and Team cards, seats, coupon), then the demo Trail, so regression is visible.
 - Failures create an Entire finding. A reviewer can override ("not a bug, this run" or "requirement is wrong"), which resolves it. A passing re-push auto-resolves it. No auto-retry.
 - Extraction caching is not needed yet, but the design must allow it if results are inconsistent.
 - Gemini does four jobs: extraction, goal compiling (careful QA-agent prompting), plain-English repro, root-cause triage.

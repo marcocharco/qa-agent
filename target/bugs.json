@@ -1,5 +1,6 @@
 {
-  "staleCoupon": true,
-  "roundedSeatPrice": true,
-  "seatsResetOnToggle": true
+  "couponMissesTeamAnnual": true,
+  "volumeDiscountOffByOne": true,
+  "teamMinSeatsDisplayOnly": true,
+  "annualCouponWrongBase": true
 }

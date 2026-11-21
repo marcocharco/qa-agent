@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Northwind Pricing",
+  title: "ACME Pricing",
   description: "Simple pricing for teams",
 };
 
