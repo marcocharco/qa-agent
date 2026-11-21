@@ -25,7 +25,7 @@ Receipts bug report, ACME pricing, 4 failures
    Steps: Press minus twice on Team at 3 seats.
    Expected: Seat count 3, Total $87.00 per month.
    Actual: Seat count still shows 3, Total $29.00 per month.
-   Likely cause: PlanCard decrease handler only floors at 1, the minimum is applied only to the number shown.
+   Likely cause: PricingCard decrease handler only floors at 1, the minimum is applied only to the number shown.
 
 4. Annual coupon is taken off the pre-annual price
    Requirement: Order is annual first, then volume discount, then SAVE10.
@@ -38,13 +38,13 @@ Receipts bug report, ACME pricing, 4 failures
 why did team annual skip the coupon in the first place? was it the branching in annualQuote or something else
 
 [3]
-let's merge monthlyQuote and annualQuote back into one quote() function so annual, then volume, then coupon all go through a single path in that order. i don't want these two drifting apart again
+let's merge monthlyQuote and annualQuote back into one calculateQuote function so annual, then volume, then coupon all go through a single path in that order. i don't want these two drifting apart again
 
 [4]
 and double check the stepper, the number on screen and the number we price with have to be the same thing. keep the clamp in the state update so minus on team stops at 3 and pro stops at 1
 
 [5]
-sanity check, run these through quote() with a quick throwaway script (delete it after, don't commit it) and tell me what comes out. pro 5 seats monthly 95.00, with SAVE10 85.50. team 3 seats monthly 87.00. team 10 seats monthly subtotal 290.00, volume -14.50, total 275.50. pro 5 seats annual 912.00, with SAVE10 discount -91.20, total 820.80. team 3 seats annual with SAVE10 subtotal 835.20, discount -83.52, total 751.68
+sanity check, run these through calculateQuote with a quick throwaway script (delete it after, don't commit it) and tell me what comes out. pro 5 seats monthly 95.00, with SAVE10 85.50. team 3 seats monthly 87.00. team 10 seats monthly subtotal 290.00, volume -14.50, total 275.50. pro 5 seats annual 912.00, with SAVE10 discount -91.20, total 820.80. team 3 seats annual with SAVE10 subtotal 835.20, discount -83.52, total 751.68
 
 [6]
 run the build one more time and give me a one line commit message for all of this

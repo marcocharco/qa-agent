@@ -33,7 +33,7 @@ async function fresh() {
   await page.goto(url);
   await page.getByLabel("Increase Pro seats").waitFor();
   const seatsNow = async (plan) => Number(await page.getByLabel(`${plan} seat count`).innerText());
-  const click = async (label, n) => { for (let i = 0; i < n; i++) await page.getByLabel(label).click(); };
+  const click = async (label, n) => { for (let i = 0; i < n; i++) { const b = page.getByLabel(label); if (!(await b.isEnabled())) return; await b.click(); } };
   return {
     page,
     shown: seatsNow,

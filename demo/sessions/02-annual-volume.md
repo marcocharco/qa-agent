@@ -14,19 +14,22 @@ i want to be sure how the coupon behaves with all this. the order has to be annu
 also, general thing, the pricing page should feel more trustworthy. no idea what exactly, just more legit. don't change any code for now, just give me a few ideas and i'll pick
 
 [5]
-pricing.ts is getting hard to follow with all the annual and volume ifs. split quote() into monthlyQuote and annualQuote and have PlanCard pick one based on billing. monthlyQuote can stay the way it is. for annualQuote do the 20% off the seat price first, then branch on the plan: plans with a volume tier get the volume discount and return, plans without one get the coupon and return. we can merge the two paths later once it settles
+pricing.ts is getting hard to follow with all the annual and volume ifs. split calculateQuote into monthlyQuote and annualQuote and have PricingCard pick one based on billing. monthlyQuote can stay the way it is. for annualQuote do the 20% off the seat price first, then branch on the plan: plans with a volume tier get the volume discount and return, plans without one get the coupon and return. we can merge the two paths later once it settles
 
 [6]
-the stepper code in PlanCard is more convoluted than it needs to be. simplify it: minus is just Math.max(1, seats - 1), plus caps at 50, and the seat number we show is clamped to the plan's min so team never displays under 3. the total reads straight off the seats state. we'll want a typed seat input later and this keeps the state raw
+the greyed out minus and plus buttons look broken on mobile. make the stepper buttons always clickable, and when you're at the limit clicking should just do nothing
 
 [7]
-can you pull the magic numbers in pricing.ts into named constants, the 0.8 and the 12 months. and for the team volume tier put it in the plan config as volume: { over: 10, rate: 0.05 }, the discount applies once they're over 10 seats. use one helper for it so monthly and annual share it
+clampSeats gets applied in the setters and again inside calculateQuote, which is messy. keep the seat state raw in PricingCard: decrease is Math.max(1, s - 1), increase is Math.min(maxSeats, s + 1), calculateQuote just prices the seats it's given, and we only clamp up to the plan's min where we show the number. we'll want a typed seat input later and raw state makes that easier
 
 [8]
-the coupon math is now written twice, once in quote() and once in annualQuote. pull it into one couponFor(listCents) helper that both use. in annualQuote feed it the list price total, seats times the plain monthly price times 12, since that's the same number the monthly path feeds it (seats times monthly price), then take the result off the annual total. monthly stays as is
+can you pull the magic numbers in pricing.ts into named constants, the 0.8 and the 12 months. and for the team volume tier put it in PLAN_CONFIGS as volume: { over: 10, rate: 0.05 }, the discount applies once they're over 10 seats. use one helper for it so monthlyQuote and annualQuote share it
 
 [9]
-run a build and tell me if anything is off
+the coupon math is now written twice, once in monthlyQuote and once in annualQuote. pull it into one couponFor(listCents) helper that both use. in annualQuote feed it the list price total, seats times the plain monthly price times 12, since that's the same number the monthly path feeds it (seats times monthly price), then take the result off the annual total. monthly stays as is
 
 [10]
+run a build and tell me if anything is off
+
+[11]
 ok that's annual, volume and the coupon done. give me a short summary i can paste in the PR
