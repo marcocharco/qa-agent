@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { StructuredModel } from "./compile";
 
 const TRANSIENT = /\b(503|504|429|UNAVAILABLE|DEADLINE_EXCEEDED|timed? ?out)\b/i;
+const QUOTA = /\b(429|RESOURCE_EXHAUSTED)\b/;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -32,6 +33,8 @@ export function geminiModel(
         } catch (e) {
           last = e;
           if (!TRANSIENT.test(String(e))) throw e;
+          // A quota error will not clear in seconds: skip retries and try the next model.
+          if (QUOTA.test(String(e))) break;
           await sleep(1500 * 2 ** attempt);
         }
       }
