@@ -17,9 +17,11 @@ export default function RequirementRow({ r, showTrail = false }: { r: Req; showT
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(r.text);
   const [pending, start] = useTransition();
+  const [warning, setWarning] = useState<string | null>(null);
+  const act = (f: () => Promise<string | null>) => start(async () => setWarning(await f()));
   const dim = !r.testable || r.status === "rejected" || r.status === "superseded";
 
-  const save = () => start(async () => { await editText(r.id, text); setEditing(false); });
+  const save = () => start(async () => { setWarning(await editText(r.id, text)); setEditing(false); });
 
   return (
     <li className={`grid gap-3 py-5 md:grid-cols-[1fr_auto] md:gap-8 ${pending ? "opacity-60" : ""}`}>
@@ -43,13 +45,14 @@ export default function RequirementRow({ r, showTrail = false }: { r: Req; showT
           {showTrail && <span className={chip}>{r.trailTitle}</span>}
           <ReceiptChip requirementId={r.id} kind={r.sourceKind} />
         </div>
+        {warning && <p className="mt-2 text-sm text-fail">{warning}</p>}
         {!r.testable && <p className="mt-2 text-sm text-muted">Not tested: {r.untestableReason ?? "no reason given"}</p>}
       </div>
       <div className="flex flex-wrap items-start gap-2 md:justify-end">
         {!editing && <button className={btnGhost} onClick={() => setEditing(true)}>Edit</button>}
-        {r.testable && (r.status === "proposed" || r.status === "rejected") && <button className={btnGhost} disabled={pending} onClick={() => start(() => setStatus(r.id, "approved"))}>Approve</button>}
-        {r.status !== "rejected" && <button className={btnGhost} disabled={pending} onClick={() => start(() => setStatus(r.id, "rejected"))}>Reject</button>}
-        {r.status === "rejected" && <button className={btnGhost} disabled={pending} onClick={() => start(() => setStatus(r.id, "proposed"))}>Restore</button>}
+        {r.testable && (r.status === "proposed" || r.status === "rejected") && <button className={btnGhost} disabled={pending} onClick={() => act(() => setStatus(r.id, "approved"))}>Approve</button>}
+        {r.status !== "rejected" && <button className={btnGhost} disabled={pending} onClick={() => act(() => setStatus(r.id, "rejected"))}>Reject</button>}
+        {r.status === "rejected" && <button className={btnGhost} disabled={pending} onClick={() => act(() => setStatus(r.id, "proposed"))}>Restore</button>}
       </div>
     </li>
   );

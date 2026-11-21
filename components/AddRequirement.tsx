@@ -14,7 +14,7 @@ export default function AddRequirement({ trailId }: { trailId: string }) {
   const submit = () => start(async () => {
     const err = await addRequirement(trailId, text, type);
     setError(err);
-    if (!err) setText("");
+    if (!err || err.startsWith("Saved")) setText("");
   });
 
   return (

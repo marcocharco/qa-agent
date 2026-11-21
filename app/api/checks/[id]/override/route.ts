@@ -1,3 +1,4 @@
+import { forgetRequirement } from "@/lib/brain";
 import { resolveFinding } from "@/lib/entire";
 import { overrideFinding, type OverrideKind } from "@/lib/findings";
 import { trailNumber } from "@/lib/process";
@@ -13,7 +14,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const ref = { project: process.env.ENTIRE_PROJECT!, trail: await trailNumber(check.trailId) };
     await resolveFinding(out.resolve.findingId, out.resolve.message, ref);
     if (out.requirementStatus) await setRequirementStatus(check.requirementId, out.requirementStatus);
-    // ponytail: out.removeFromBrain is not acted on, there is no Brain removal helper in lib/entire.ts yet
+    if (out.removeFromBrain) await forgetRequirement(check.requirementId).catch(() => {});
     return Response.json({ ok: true, message: out.resolve.message });
   } catch (e) {
     return Response.json({ error: `Could not resolve the finding: ${String(e).slice(0, 200)}` }, { status: 502 });

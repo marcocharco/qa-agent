@@ -6,11 +6,13 @@ import { closeDb, db } from "../lib/db";
 const q = (sql: string, p: unknown[] = []) => db().query(sql, p);
 
 async function remove() {
-  await q("delete from bug_reports where id like 'sample-%'");
-  await q("delete from steps where check_id like 'sample-%'");
-  await q("delete from checks where id like 'sample-%'");
-  await q("delete from runs where id like 'sample-%'");
-  await q("delete from requirements where id like 'sample-%'");
+  // Also catches rows added through the dashboard to a sample Trail.
+  const t = "trail_id like 'sample-%'";
+  await q(`delete from bug_reports where check_id in (select id from checks where run_id in (select id from runs where ${t}))`);
+  await q(`delete from steps where check_id in (select id from checks where run_id in (select id from runs where ${t}))`);
+  await q(`delete from checks where run_id in (select id from runs where ${t})`);
+  await q(`delete from runs where ${t}`);
+  await q(`delete from requirements where ${t}`);
   await q("delete from trails where id like 'sample-%'");
 }
 

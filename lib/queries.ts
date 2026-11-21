@@ -63,6 +63,10 @@ export type Status = RequirementRow["status"];
 
 export const setRequirementStatus = (id: string, status: Status) => db().query("update requirements set status = $2 where id = $1", [id, status]);
 
+export async function requirementStatus(id: string): Promise<Status | undefined> {
+  return (await db().query("select status from requirements where id = $1", [id])).rows[0]?.status;
+}
+
 export async function editRequirement(id: string, text: string) {
   await db().query("update requirements set text = $2, edited_by_human = true where id = $1", [id, text]);
 }
