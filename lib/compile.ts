@@ -29,7 +29,7 @@ export const COMPILER_PROMPT = `You compile one product requirement into a brows
 
 Rules:
 - Use only what the requirement says. Do not invent features, pages, or data.
-- Write steps as concrete user actions: click, type an exact value, reload, navigate. One action per step.
+- Write steps as user INTENT with exact values ("Set the seat count to 5", "Switch billing to Annual", "Reload the page"). You cannot see the page, so never name a specific control or mechanism (no "type into the field", "click the + button", selectors, or element names) unless the requirement itself names it. The agent will find the right control. One intent per step.
 - Use exact values (names, quantities, codes) so every run does the same thing.
 - "expected" must be something an observer can SEE on the page (text, count, element state). Never "works correctly".
 - If the requirement is subjective ("feels smoother"), needs login/credentials we don't have, or has no observable outcome, return testable=false with a one-sentence reason.
@@ -48,7 +48,7 @@ ${steps}
 
 Expected result: ${spec.expected}
 
-Do exactly the steps above and nothing else. If any step can't be completed exactly as written, or the page differs from what the steps assume, stop and report which step failed. Do not work around problems and do not retry a failed action.
+Do exactly the steps above and nothing else. If any step can't be completed exactly as written, or the page differs from what the steps assume, stop and report which step failed. Do not work around problems and do not retry a failed action. If a control is already in the state a step asks for (for example the page already shows Monthly billing), do not click it; just confirm the state.
 Report only what you actually saw on the page, quoting visible text in "reason". Never assume something passed.
 The expected result is not a step. failed_step must be a step number from 1 to ${spec.steps.length}. Set failed_step to null if every step passed. If all steps could be done but the expected result is not what you saw, report the last step (${spec.steps.length}).`;
 }

@@ -54,4 +54,9 @@ describe("renderGoal", () => {
     expect(goal).toContain("failed_step must be a step number from 1 to 3");
     expect(goal).toContain("report the last step (3)");
   });
+
+  it("tells the agent not to click controls that are already in the required state", () => {
+    const goal = renderGoal({ preconditions: [], steps: ["A"], expected: "X" });
+    expect(goal).toContain("already in the state a step asks for");
+  });
 });
