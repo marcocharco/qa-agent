@@ -59,6 +59,13 @@ A company's on-call is paged after an error is logged. An agent drafts a fix PR 
 - **Eval (required, scheduled later):** TinyFish vs a Claude browser agent (Agent SDK plus Chrome DevTools MCP) on the same requirements, on buggy and control builds, N=5 runs. Metrics: detection rate, false positives, consistency, time, cost, failing-step accuracy. Browser backends sit behind a `Runner` interface.
 - TinyFish beta enrollment: done. Also request a higher concurrency limit.
 
+## Prize alignment
+
+- **Entire:** uses Trails (trigger, gate, merge recommendation), Sessions (requirement source), Brain (write on approve, recall in the prevention beat), Graph (token-savings measurement) and `why`. Receipts itself is built on Entire, with a Trail per feature and sessions captured.
+- **TinyFish:** the job is QA. Strict-mode parallel browsers, a live-site beat in URL mode, and the eval against a Claude browser agent as evidence of smart use. The demo is posted on X or LinkedIn tagging TinyFish.
+- **Gemini:** extraction, goal compiling, repro writing and root-cause triage. Not optimized further.
+- **Tiger Data:** Postgres run history, a free bonus.
+
 ## Users and modes
 
 The primary user is a developer or small team shipping with coding agents on Entire. There are two entry points into the same engine.
@@ -168,11 +175,32 @@ The MVP is one complete Trail loop: push, extract, approve, run, fail, report, b
 - Brain write-back on approve
 - Dashboard: workspace, live grid, replay page, basic history
 
-**Stretch (in order):** Gemini root cause (level 3) → `entire why` + prompt (levels 4–5) → Playwright export → exploratory mode → URL mode polish.
+**Priority order (updated Nov 21).** One ranked list replaces the MVP/stretch split. If behind by an hour, cut from the bottom.
+
+1. Spike and a **thin vertical slice** (see build plan checkpoint)
+2. Toy shop with bug manifest and control build, hosted preview, base and demo Trails
+3. Orchestrator: extraction, goal compiler, parallel runs, results stored
+4. Bug report levels 1 to 2, findings, review and override, Brain write-back on approve
+5. Dashboard: workspace, live grid, replay page
+6. `entire why` and prompt attribution (levels 4 to 5)
+7. **Graph token-savings measurement** (triage with and without `entire graph`, report the numbers)
+8. Trail comment with merge recommendation ("does the change match the intent?")
+9. **Prevention beat for the demo:** a fresh Claude Code session recalls the requirement from Brain and avoids the bug
+10. **URL mode against a real live site** as one short demo beat
+11. **Eval:** TinyFish vs Claude browser agent (required before submission, scheduled later)
+12. Gemini root cause (level 3)
+13. Token numbers, polish
+14. Trail history chart (plain table until then)
+
+Nice-to-have, only if time remains: nightly scheduled regression run with a morning report (the "AI employee" framing), Playwright repro export, exploratory mode.
+
+**Decided against:** Gemini screenshot second-opinion verifier. Gemini stays at four jobs, so the Gemini prize is a lower priority and not optimized for.
 
 **Out of scope:** auth-protected targets, Jira/GitHub API integrations, auto-launching Claude Code fixes, multi-repo Trails, hosted deployment of Receipts itself.
 
 **Build plan (about 13.5 hours)**
+
+**Checkpoint at hour 3:** one real requirement must flow end to end: a chat line becomes an extracted requirement, TinyFish returns a verdict, and an Entire finding is created. If the Trail-to-session link or the finding gate fails here, switch to the fallbacks (manual session attach, local gate) immediately and rescope. Only then widen to the full plan below.
 
 1. **Spike, 1.5 h:** enroll in TinyFish beta; `entire enable`; confirm `trail show/watch --json`, `finding add` from a plain script, Findings gate blocks `merge --dry-run`; one TinyFish run through a tunnel returning `passed:false`.
 2. **Toy shop + demo Trail, 1 h:** Next.js shop with planted bugs; record real Claude Code sessions that state the requirements.
@@ -182,7 +210,7 @@ The MVP is one complete Trail loop: push, extract, approve, run, fail, report, b
 6. **Stretch, 1.5 h:** root cause with Graph, then `entire why`.
 7. **Ship, 2 h:** rehearse demo, record backup video, Devpost write-up with token numbers, post demo on X/LinkedIn tagging TinyFish.
 
-If you fall more than an hour behind, cut in this order: history chart, live grid (show a single run), URL mode.
+If you fall more than an hour behind, cut from the bottom of the priority order above: history chart, then polish, then Gemini root cause. The eval and Graph measurement are protected, as is the hour-3 checkpoint.
 
 ## Risks and open questions
 
