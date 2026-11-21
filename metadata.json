@@ -1,0 +1,75 @@
+{
+  "cli_version": "0.13.4",
+  "checkpoint_id": "01M8004ZE17QDW56SWJFMRWAFK",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "SPEC.md",
+    "shop/.gitignore",
+    "shop/app/favicon.ico",
+    "shop/app/globals.css",
+    "shop/app/layout.tsx",
+    "shop/app/page.tsx",
+    "shop/bugs.json",
+    "shop/next.config.ts",
+    "shop/package-lock.json",
+    "shop/package.json",
+    "shop/public/file.svg",
+    "shop/public/globe.svg",
+    "shop/public/next.svg",
+    "shop/public/vercel.svg",
+    "shop/public/window.svg",
+    "shop/tsconfig.json",
+    "target/.gitignore",
+    "target/AGENTS.md",
+    "target/app/favicon.ico",
+    "target/app/globals.css",
+    "target/app/layout.tsx",
+    "target/app/page.tsx",
+    "target/bugs.json",
+    "target/components/Calculator.tsx",
+    "target/lib/bugs.ts",
+    "target/lib/pricing.ts",
+    "target/next.config.ts",
+    "target/package-lock.json",
+    "target/package.json",
+    "target/public/file.svg",
+    "target/public/globe.svg",
+    "target/public/next.svg",
+    "target/public/vercel.svg",
+    "target/public/window.svg",
+    "target/tsconfig.json",
+    "tsconfig.json"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 14,
+    "cache_creation_tokens": 22916,
+    "cache_read_tokens": 1240829,
+    "output_tokens": 18375,
+    "api_call_count": 6
+  },
+  "redaction": {
+    "replacements": 26,
+    "layers": {
+      "betterleaks": 2,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 0,
+      "credentialed_uri": 0,
+      "entropy": 24,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}

@@ -1,0 +1,5 @@
+lets compare notes app and pricing page. Explain both in equal detail, and lets determine which to go with. When i said diff from shop, it was just because i didn't want a shop specificly. I'm fine with the idea of the pricing page, i just want hte best demo
+
+---
+
+ok lets go with pricing page, i think the bugs are a little more challengeing and don't feel like a simple one line fix
