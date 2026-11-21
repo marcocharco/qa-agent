@@ -24,7 +24,7 @@ export default function Pricing() {
   return (
     <>
       <header className="border-b border-line">
-        <div className="mx-auto flex h-14 max-w-5xl items-center px-6 font-semibold tracking-tight">ACME</div>
+        <div className="mx-auto flex h-16 max-w-5xl items-center px-6 text-2xl font-bold tracking-tight">ACME</div>
       </header>
 
       <main className="mx-auto w-full max-w-5xl px-6 pb-24 pt-20">
