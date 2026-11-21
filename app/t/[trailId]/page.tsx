@@ -4,7 +4,7 @@ import RunNow from "@/components/RunNow";
 import { chip } from "@/components/ui";
 import { listRequirements, type RequirementRow as Req } from "@/lib/queries";
 
-function Section({ title, hint, rows, showTrail }: { title: string; hint: string; rows: Req[]; showTrail?: boolean }) {
+function Section({ title, hint, rows, showTrail, empty }: { title: string; hint: string; rows: Req[]; showTrail?: boolean; empty: string }) {
   return (
     <section className="mt-10">
       <div className="flex items-baseline gap-3">
@@ -17,7 +17,7 @@ function Section({ title, hint, rows, showTrail }: { title: string; hint: string
           {rows.map((r) => <RequirementRow key={r.id} r={r} showTrail={showTrail} />)}
         </ul>
       ) : (
-        <p className="mt-4 rounded-xl border border-dashed border-line px-4 py-6 text-sm text-muted">Nothing here yet.</p>
+        <p className="mt-4 rounded-xl border border-dashed border-line px-4 py-6 text-sm text-muted">{empty}</p>
       )}
     </section>
   );
@@ -34,8 +34,8 @@ export default async function Requirements({ params }: { params: Promise<{ trail
         <RunNow trailId={trailId} />
       </div>
       <div className="mt-6"><AddRequirement trailId={trailId} /></div>
-      <Section title="New" hint="Extracted from this Trail's description and sessions." rows={fresh} />
-      <Section title="Regression" hint="Approved requirements from merged Trails. They run on every push." rows={regression} showTrail />
+      <Section title="New" hint="Extracted from this Trail's description and sessions." rows={fresh} empty="Nothing extracted yet. Press Run now to read the Trail and its sessions, or add a requirement yourself above." />
+      <Section title="Regression" hint="Approved requirements from merged Trails. They run on every push." rows={regression} showTrail empty="No approved requirements from merged Trails yet. Approve requirements on a Trail and merge it to build the regression suite." />
     </>
   );
 }

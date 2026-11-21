@@ -81,6 +81,15 @@ export default function LiveGrid({ trailId, initial }: { trailId: string; initia
         <p className="mt-4 rounded-xl bg-fail/10 px-4 py-3 text-sm text-fail">The orchestrator exited with code {job.exitCode}: {job.log.at(-1)}</p>
       )}
 
+      {!run && !job?.running && (
+        <p className="mt-6 rounded-xl border border-dashed border-line px-4 py-8 text-center text-sm text-muted">
+          This Trail has not been run yet. Approve its requirements, then press Run now. Each requirement gets its own live browser here.
+        </p>
+      )}
+      {run && !run.finishedAt && checks.length === 0 && (
+        <p className="mt-6 rounded-xl border border-dashed border-line px-4 py-8 text-center text-sm text-muted">Compiling requirements into browser goals. Tiles appear as each browser starts.</p>
+      )}
+
       {run && checks.length > 0 && (
         <div className="mt-6">
           <div className="flex h-2 overflow-hidden rounded-full bg-chip">

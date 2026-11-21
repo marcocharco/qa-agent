@@ -56,6 +56,7 @@ async function seed() {
   }
   const old = Date.now() - 3 * 3600_000;
   await q("insert into runs (id,trail_id,head_sha,started_at,finished_at,passed_count,failed_count,errored_count) values ('sample-run-old',$1,'9f8e7d6',$2,$3,4,1,0)", [DEMO, new Date(old - 140_000), new Date(old)]);
+  await q("insert into runs (id,trail_id,head_sha,started_at,finished_at,passed_count,failed_count,errored_count) values ('sample-run-older',$1,'3c2b1a0',$2,$3,2,3,1)", [DEMO, new Date(old - 86_400_000 - 200_000), new Date(old - 86_400_000)]);
   await q("insert into runs (id,trail_id,head_sha,started_at) values ('sample-run-1',$1,'e4f5a6b',now() - interval '95 seconds')", [DEMO]);
 
   const check = (id: string, run: string, req: string, passed: boolean | null, step: number | null, reason: string | null, url: string | null, ms: number | null) =>
