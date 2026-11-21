@@ -68,7 +68,10 @@ export default function LiveGrid({ trailId, initial }: { trailId: string; initia
           </h2>
           {run && <p className="mt-1 text-sm text-muted">Commit <span className="font-mono">{run.headSha.slice(0, 7)}</span> · started {ago(run.startedAt)}</p>}
         </div>
-        <RunNow trailId={trailId} goToRun={false} label={run ? "Run again" : "Run now"} />
+        <div className="flex items-center gap-4">
+          {run && <Link href={`/t/${trailId}/history`} className="text-sm text-muted hover:text-foreground">Previous runs</Link>}
+          <RunNow trailId={trailId} goToRun={false} label={run ? "Run again" : "Run now"} />
+        </div>
       </div>
 
       {starting && (
