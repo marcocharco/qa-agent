@@ -1,0 +1,5 @@
+ok i turned approvals off. 2. lets use vercel
+
+---
+
+i don't really want to use a shop as a demo, are there other options that could be good. like a singular feature that we could say someone wanted to implement and parts of it worked, parts of it didn't, and something old broke. If no other good option, we can stick with a shop
