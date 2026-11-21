@@ -66,6 +66,15 @@ A company's on-call is paged after an error is logged. An agent drafts a fix PR 
 - **Gemini:** extraction, goal compiling, repro writing and root-cause triage. Not optimized further.
 - **Tiger Data:** Postgres run history, a free bonus.
 
+## Spike findings (Nov 21)
+
+- `entire trail sessions <trail> --json` lists the sessions behind a Trail's commits. The checkpoint-matching heuristic is now only a fallback.
+- Findings are agent-native: `entire trail finding add|list|resolve|dismiss|reopen`, with `--severity`, `--file`, `--line` and `--patch`. `trail show --json` exposes merge gates under `changes[].mergeability`.
+- Trails must be enabled per repo by an admin (Settings > Trails on entire.com), otherwise `trail create` refuses.
+- TinyFish TypeScript SDK is `@tiny-fish/sdk` (`client.agent.run` with `agent_config: { mode: "strict", max_steps }` and `output_schema`). Strict mode and `max_steps` are beta, and enrollment is done.
+- A hosted Vercel preview needs the Deployment Protection bypass secret in the URL (`x-vercel-protection-bypass`). `COMPLETED` run status does not mean the test passed, so always read `result.passed`.
+- Commit author is the GitHub noreply address, so the public repo does not expose a personal email.
+
 ## Users and modes
 
 The primary user is a developer or small team shipping with coding agents on Entire. There are two entry points into the same engine.
