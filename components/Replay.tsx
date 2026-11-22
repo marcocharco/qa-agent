@@ -58,7 +58,9 @@ export default function Replay({ r, failing, checkId }: { r: ReplayData; failing
   const end = path.at(-1) ?? { x: 0, y: 0 };
   const d = path.map((p, k) => `${k ? "L" : "M"}${(p.x * 1280).toFixed(1)} ${(p.y * 720).toFixed(1)}`).join(" ");
   // The agent's own words for the step. A click-like action makes the end of the trail ring out.
-  const clicked = path.length > 0 && CLICK.test(raw[upTo]?.action ?? "");
+  // One ring per click, in order. A merged step (seven presses of plus) rings seven times.
+  const clicks = path.length > 0 ? Math.min(8, (f?.frames ?? []).filter((x) => CLICK.test(x.action)).length) : 0;
+  const gap = clicks > 1 ? Math.min(0.3, 1.4 / (clicks - 1)) : 0;
   if (!frames.length) return null;
   const go = (n: number) => { setPlaying(false); setI(Math.min(last, Math.max(0, n))); };
   const tab = (m: "steps" | "video", label: string) => (
@@ -86,18 +88,22 @@ export default function Replay({ r, failing, checkId }: { r: ReplayData; failing
                   <>
                     <defs>
                       <linearGradient id={`${gid}-g`} gradientUnits="userSpaceOnUse" x1={path[0].x * 1280} y1={path[0].y * 720} x2={path.at(-1)!.x * 1280} y2={path.at(-1)!.y * 720}>
-                        <stop offset="0" stopColor="var(--color-accent)" stopOpacity="0.2" />
+                        <stop offset="0" stopColor="var(--color-accent)" stopOpacity="0" />
                         <stop offset="1" stopColor="var(--color-accent)" />
                       </linearGradient>
+                      <linearGradient id={`${gid}-h`} gradientUnits="userSpaceOnUse" x1={path[0].x * 1280} y1={path[0].y * 720} x2={path.at(-1)!.x * 1280} y2={path.at(-1)!.y * 720}>
+                        <stop offset="0" stopColor="white" stopOpacity="0" />
+                        <stop offset="1" stopColor="white" stopOpacity="0.9" />
+                      </linearGradient>
                     </defs>
-                    <path className="cursor-trail" d={d} pathLength={1} fill="none" stroke="white" strokeWidth={9} strokeLinecap="round" strokeLinejoin="round" />
+                    <path className="cursor-trail" d={d} pathLength={1} fill="none" stroke={`url(#${gid}-h)`} strokeWidth={9} strokeLinecap="round" strokeLinejoin="round" />
                     <path className="cursor-trail" d={d} pathLength={1} fill="none" stroke={`url(#${gid}-g)`} strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" />
                   </>
                 )}
-                {clicked && (
-                  <circle className="radar" cx={end.x * 1280} cy={end.y * 720} r={42} fill="none" stroke="var(--color-accent)" strokeWidth={4}
-                    style={{ animationDelay: path.length > 1 ? undefined : "-1.15s" }} />
-                )}
+                {Array.from({ length: clicks }, (_, k) => (
+                  <circle key={k} className="radar" cx={end.x * 1280} cy={end.y * 720} r={42} fill="none" stroke="var(--color-accent)" strokeWidth={4}
+                    style={{ animationDelay: `${(path.length > 1 ? 0 : -1.15) + k * gap}s` }} />
+                ))}
               </svg>
             )}
             {failing && mark?.box && f.file === mark.file && (

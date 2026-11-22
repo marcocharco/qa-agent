@@ -48,31 +48,40 @@ function StartingPanel({ job }: { job: Job }) {
   );
 }
 
+const ROW = 28;
+const FADE = "linear-gradient(to bottom, transparent, black 30%, black 70%, transparent)";
+
 /**
- * What the agent just finished, what it is doing, and what comes next. The agent's action changes every few seconds;
- * each row eases between roles as the list moves up. "Next" is the test's next step, since the agent does not announce it.
+ * A roller of the agent's actions: what it just finished above, what it is doing in the middle, the test's next step
+ * below. When the agent moves on, everything slides up one row and the new action rises into the middle.
+ * "Next" is the test's next step, since the agent does not announce its own.
  */
 function Feed({ now, steps }: { now: string | null; steps: string[] }) {
-  const [st, setSt] = useState({ cur: now, prev: null as string | null, idx: 0, n: 0 });
-  if (now !== st.cur && now) {
-    setSt({ cur: now, prev: st.cur, idx: currentStep(now, steps, st.idx), n: st.n + 1 });
+  const [st, setSt] = useState({ cur: now, hist: [] as { id: number; text: string }[], idx: 0, n: 0 });
+  if (now && now !== st.cur) {
+    setSt({
+      cur: now, n: st.n + 1, idx: currentStep(now, steps, st.idx),
+      hist: st.cur ? [...st.hist, { id: st.n, text: st.cur }].slice(-4) : st.hist,
+    });
   }
   const next = steps[st.idx + 1] ?? (st.idx + 1 === steps.length ? "Read the result" : null);
   const rows = [
-    st.prev && { key: `p${st.n}`, text: cleanAction(st.prev), role: "done" as const },
-    { key: `c${st.n}`, text: st.cur ? cleanAction(st.cur) : "Starting the browser", role: "now" as const },
-    next && { key: `n${st.n}`, text: next, role: "next" as const },
-  ].filter(Boolean) as { key: string; text: string; role: "done" | "now" | "next" }[];
+    ...st.hist.map((h) => ({ key: `h${h.id}`, text: cleanAction(h.text), role: "done" as const })),
+    { key: `h${st.n}`, text: st.cur ? cleanAction(st.cur) : "Starting the browser", role: "now" as const },
+    ...(next ? [{ key: `x${next}`, text: next, role: "next" as const }] : []),
+  ];
   return (
-    <div className="mt-4 space-y-1.5 border-t border-line pt-3" aria-live="polite">
-      {rows.map((r) => (
-        <p key={r.key} className={`now-in flex items-start gap-2.5 text-sm transition-opacity duration-300 ${r.role === "now" ? "font-medium" : "text-muted opacity-50"}`}>
-          <span className="mt-1.5 flex h-3 w-3 shrink-0 items-center justify-center" aria-hidden>
-            {r.role === "now" ? <span className="text-base leading-none">›</span> : r.role === "done" ? <span className="text-[10px]">✓</span> : <span className="h-2 w-2 rounded-full border border-muted" />}
-          </span>
-          <span className="min-w-0 break-words">{r.text}</span>
-        </p>
-      ))}
+    <div className="relative mt-4 overflow-hidden border-t border-line pt-1" style={{ height: ROW * 3 + 4, maskImage: FADE, WebkitMaskImage: FADE }} aria-live="polite">
+      <div className="transition-transform duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none" style={{ transform: `translateY(${(1 - st.hist.length) * ROW}px)` }}>
+        {rows.map((r) => (
+          <p key={r.key} className={`flex items-center gap-2.5 text-sm transition-opacity duration-300 ${r.role === "now" ? "font-medium" : "text-muted"} ${r.role === "now" ? "opacity-100" : r.role === "done" ? "opacity-60" : "opacity-50"}`} style={{ height: ROW }}>
+            <span className="flex h-3 w-3 shrink-0 items-center justify-center" aria-hidden>
+              {r.role === "done" ? <span className="text-[10px]">✓</span> : <span className={`h-2.5 w-2.5 rounded-full border-[1.5px] ${r.role === "now" ? "border-foreground" : "border-muted"}`} />}
+            </span>
+            <span className="truncate" title={r.text}>{r.text}</span>
+          </p>
+        ))}
+      </div>
     </div>
   );
 }
