@@ -68,7 +68,7 @@ function Feed({ now, steps }: { now: string | null; steps: string[] }) {
       {rows.map((r) => (
         <p key={r.key} className={`now-in flex items-start gap-2.5 text-sm transition-opacity duration-300 ${r.role === "now" ? "font-medium" : "text-muted opacity-50"}`}>
           <span className="mt-1.5 flex h-3 w-3 shrink-0 items-center justify-center" aria-hidden>
-            {r.role === "now" ? <span className="think"><span /><span /><span /></span> : r.role === "done" ? <span className="text-[10px]">✓</span> : <span className="h-2 w-2 rounded-full border border-muted" />}
+            {r.role === "now" ? <span className="text-base leading-none">›</span> : r.role === "done" ? <span className="text-[10px]">✓</span> : <span className="h-2 w-2 rounded-full border border-muted" />}
           </span>
           <span className="min-w-0 break-words">{r.text}</span>
         </p>

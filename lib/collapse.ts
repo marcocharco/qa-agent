@@ -3,7 +3,7 @@ export type Frame = { action: string; durationS: number | null; file: string | n
 export type Group = { label: string; /** Only the agent reading the page */ look: boolean; frames: Frame[]; durationS: number | null; /** The frame to show: the last one with a screenshot */ file: string | null };
 
 /** Drops the agent's own bookkeeping ("for Check 2", "CHECK 1 step 3:"). */
-export const cleanAction = (a: string) => a.replace(/^check \d+( step \d+)?:\s*/i, "").replace(/\s*\(?for check \d+\)?/gi, "").replace(/\s*\bcheck \d+\b/gi, "").replace(/\s{2,}/g, " ").trim();
+export const cleanAction = (a: string) => a.replace(/^check \d+( step \d+)?:\s*/i, "").replace(/\s*\(?for check \d+\)?/gi, "").replace(/\s*\bcheck \d+\b/gi, "").replace(/\s*\(\s*\)/g, "").replace(/\s{2,}/g, " ").trim();
 
 // Reading the page, not doing anything: several in a row are one "look".
 const LOOK = /^(check|visual check|understand|confirm|recheck|re-check|get|full page|find how|read|verify|look|inspect|take)\b/i;

@@ -28,6 +28,9 @@ describe("collapseSteps", () => {
   it("keeps only the first reload or navigation", () => {
     expect(collapseSteps(fr("Navigate to the page", "Select Team plan", "Reload page fresh", "Set seats to 10", "Check final state")).map((g) => g.label)).toEqual(["Open the page", "Select Team plan", "Set seats to 10", "Read the result"]);
   });
+  it("leaves no empty brackets behind", () => {
+    expect(collapseSteps(fr("Click Monthly button to understand plan selection (Check 1)")).map((g) => g.label)).toEqual(["Click Monthly button to understand plan selection"]);
+  });
   it("keeps different actions apart and strips check bookkeeping", () => {
     expect(collapseSteps(fr("Reload page for CHECK 2 fresh state", "Select Team plan for Check 2")).map((g) => g.label)).toEqual(["Open the page", "Select Team plan"]);
   });
