@@ -188,10 +188,19 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
       const attempt = (run: CheckRun) => ({ runId: run.runId, status: run.status, error: run.error, result: run.result, streamingUrl: run.streamingUrl });
       const first = await session(compiled, "");
       const retry = compiled.filter((_, i) => needsSecondRun(first.verdicts[i]));
-      const second = retry.length ? await session(retry, " (confirming)") : null;
+      // A session that lost its place (no result for a check) is not rerun as is: long sessions are what made the agent
+      // drop its task, so a check with no verdict is confirmed in a session of its own.
+      const split = retry.some((c) => first.verdicts[compiled.indexOf(c)].state === "errored");
+      const batches = !retry.length ? [] : split ? retry.map((c) => [c]) : [retry];
+      const confirmed = new Map<(typeof compiled)[number], { s: Awaited<ReturnType<typeof session>>; j: number }>();
+      await Promise.all(batches.map(async (items) => {
+        const s = await session(items, " (confirming)");
+        items.forEach((c, j) => confirmed.set(c, { s, j }));
+      }));
       for (const [i, c] of compiled.entries()) {
-        const j = retry.indexOf(c);
-        const v2: Verdict | null = second && j >= 0 ? second.verdicts[j] : null;
+        const conf = confirmed.get(c);
+        const second = conf?.s ?? null;
+        const v2: Verdict | null = conf ? conf.s.verdicts[conf.j] : null;
         const final = reconcile(first.verdicts[i], v2);
         const last = v2 ? second!.run : first.run;
         await db().query(
@@ -199,7 +208,7 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
              duration_ms=$7, classification=$8, attempts=$9, raw_result=$10, video_path=$11, session_pos=$12 where id=$1`,
           [c.checkId, last.runId, final.state === "passed" ? true : final.state === "failed" ? false : null, final.failedStep, final.reason,
            last.streamingUrl, Date.now() - t, final.classification, v2 ? 2 : 1, JSON.stringify(v2 ? [attempt(first.run), attempt(second!.run)] : [attempt(first.run)]),
-           (v2 ? second!.replay : first.replay)?.video ?? null, (v2 ? retry.indexOf(c) : i) + 1],
+           (v2 ? second!.replay : first.replay)?.video ?? null, (conf ? conf.j : i) + 1],
         );
         // The session's steps are shared by its checks, so each check keeps the whole list of its last session.
         const rp = (v2 ? second!.replay : first.replay)?.steps ?? [];
