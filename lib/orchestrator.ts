@@ -14,7 +14,7 @@ import { parseTranscript } from "./transcript";
 import { triageCheck } from "./triage";
 import { verifyPass } from "./verifyPass";
 import { gaveNoVerdict, toFeatureVerdicts, type Verdict } from "./verdict";
-import { needsSecondRun, reconcile } from "./confirm";
+import { needsSecondRun, needsThirdRun, reconcile, reconcileThree } from "./confirm";
 import { recommend } from "./recommendation";
 import { saveReplay, segmentSteps } from "./replay";
 import type { CheckRun } from "./tinyfish";
@@ -238,26 +238,33 @@ export async function processTrail(cfg: Config, ref: TrailRef, opts: { only?: st
       // Each check that did not pass is confirmed in a session of its own, in parallel with the others (the slots keep the
       // total within the browser limit). Isolated, so the first session's leftover page state cannot explain the second answer.
       const batches = retry.map((c) => [c]);
-      const confirmed = new Map<(typeof compiled)[number], { s: Awaited<ReturnType<typeof session>>; j: number }>();
+      type Session = Awaited<ReturnType<typeof session>>;
+      const confirmed = new Map<(typeof compiled)[number], { s: Session; j: number; third: Session | null }>();
       await Promise.all(batches.map(async (items) => {
         const s = await session(items, " (confirming)");
-        items.forEach((c, j) => confirmed.set(c, { s, j }));
+        // A run that errored and a run that failed do not confirm each other. One more run decides.
+        const idx = compiled.indexOf(items[0]);
+        const third = needsThirdRun(first.verdicts[idx], s.verdicts[0]) ? await session(items, " (tie-break)") : null;
+        items.forEach((c, j) => confirmed.set(c, { s, j, third }));
       }));
       for (const [i, c] of compiled.entries()) {
         const conf = confirmed.get(c);
         const second = conf?.s ?? null;
         const v2: Verdict | null = conf ? conf.s.verdicts[conf.j] : null;
-        const final = reconcile(first.verdicts[i], v2);
-        const last = v2 ? second!.run : first.run;
+        const v3: Verdict | null = conf?.third ? conf.third.verdicts[0] : null;
+        const final = v3 ? reconcileThree(first.verdicts[i], v2!, v3) : reconcile(first.verdicts[i], v2);
+        const latest = conf?.third ?? second ?? first;
+        const last = latest.run;
+        const runs = [first.run, ...(second ? [second.run] : []), ...(conf?.third ? [conf.third.run] : [])];
         await db().query(
           `update checks set tinyfish_run_id=$2, passed=$3, failed_step=$4, reason=$5, streaming_url=coalesce($6,streaming_url),
              duration_ms=$7, classification=$8, attempts=$9, raw_result=$10, video_path=$11, session_pos=$12 where id=$1`,
           [c.checkId, last.runId, final.state === "passed" ? true : final.state === "failed" ? false : null, final.failedStep, final.reason,
-           last.streamingUrl, Date.now() - t, final.classification, v2 ? 2 : 1, JSON.stringify(v2 ? [attempt(first.run), attempt(second!.run)] : [attempt(first.run)]),
-           (v2 ? second!.replay : first.replay)?.video ?? null, (conf ? conf.j : i) + 1],
+           last.streamingUrl, Date.now() - t, final.classification, runs.length, JSON.stringify(runs.map(attempt)),
+           latest.replay?.video ?? null, (conf ? (conf.third ? 0 : conf.j) : i) + 1],
         );
         // The session's steps are shared by its checks, so each check keeps the whole list of its last session.
-        const rp = (v2 ? second!.replay : first.replay)?.steps ?? [];
+        const rp = latest.replay?.steps ?? [];
         if (rp.length) {
           for (const [k, st] of rp.entries()) {
             await db().query("insert into steps (check_id,index,action,screenshot_path,duration_s,at) values ($1,$2,$3,$4,$5,$6)", [c.checkId, k + 1, st.action, st.file, st.durationS, st.at]);

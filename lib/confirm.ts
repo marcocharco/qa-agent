@@ -35,3 +35,14 @@ function fromOne(v: Verdict): Final {
   if (v.state === "errored") return { state: "errored", classification: v.cause, failedStep: null, reason: v.reason };
   return { state: "needs_review", classification: "flaky", failedStep: null, reason: `Failed once, not confirmed. ${v.reason}` };
 }
+
+/** One run errored and the other failed: neither confirms anything, so a third run settles it. */
+export const needsThirdRun = (a: Verdict, b: Verdict) => (a.state === "errored") !== (b.state === "errored") && (a.state === "failed" || b.state === "failed");
+
+/** Errors are not answers. With three runs, the first two that answered are the ones compared. */
+export function reconcileThree(a: Verdict, b: Verdict, c: Verdict): Final {
+  const answered = [a, b, c].filter((v) => v.state !== "errored");
+  if (answered.length >= 2) return reconcile(answered[0], answered[1]);
+  if (answered.length === 1) return reconcile(answered[0], null);
+  return reconcile(b, c);
+}

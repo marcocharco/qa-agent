@@ -72,7 +72,8 @@ export function renderFeatureGoal(specs: CheckSpec[]): string {
   const checks = specs
     .map((spec, i) => {
       const pre = spec.preconditions.length ? `Starting state: ${spec.preconditions.join("; ")}.\n` : "";
-      const steps = spec.steps.map((s, j) => `  ${j + 1}. ${s}`).join("\n");
+      // The last thing the agent does is bring the result on screen. Its final screenshot is the evidence, and a result below the fold is not evidence.
+      const steps = [...spec.steps, "Scroll down until the totals and every discount line on the plan card are fully visible, then read them"].map((s, j) => `  ${j + 1}. ${s}`).join("\n");
       return `CHECK ${i + 1}\n${pre}Steps:\n${steps}\nExpected: ${spec.expected}`;
     })
     .join("\n\n");
