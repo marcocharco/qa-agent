@@ -1,4 +1,5 @@
-// Usage: npx tsx --env-file=.env.local scripts/eval/dev-session.mts [buggy|fixed]
+// Usage: npx tsx --env-file=.env.local scripts/eval/dev-session.mts [buggy|fixed] [--no-list]
+// --no-list: the session is only told to check that the feature works, with no list of requirements.
 // The spot check: the developer's own Claude Code session, in a checkout of the branch, is handed the same requirements
 // and asked to test the live page in a browser. Timed, with the cost Claude Code reports. One run, not a statistic.
 import { execFile } from "node:child_process";
@@ -25,7 +26,9 @@ try {
   const mcp = path.join(dir, "mcp.json");
   const bin = process.env.CHROME_DEVTOOLS_MCP ?? path.join(os.homedir(), ".npm/_npx/053a863a8198098a/node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js");
   await writeFile(mcp, JSON.stringify({ mcpServers: { "chrome-devtools": { command: "node", args: [bin, "--headless", "--isolated"] } } }));
-  const prompt = `You just built the annual billing and volume pricing feature in this repo, and it is deployed at ${url}.
+  const noList = process.argv.includes("--no-list");
+  const prompt = noList ? `You just built the annual billing and volume pricing feature in this repo, and it is deployed at ${url}.
+Check in a real browser that the feature works. Do not change any code. Tell me what works and what is broken, with what you saw on the page.` : `You just built the annual billing and volume pricing feature in this repo, and it is deployed at ${url}.
 Test it in a real browser against these requirements, then tell me which pass and which fail. Do not change any code.
 
 ${reqs.map((r, i) => `${i + 1}. ${r}`).join("\n")}
@@ -39,7 +42,7 @@ For each requirement, give pass or fail and what you actually saw on the page.`;
   const seconds = (Date.now() - t0) / 1000;
   console.log(out.result);
   console.log(`\n--- ${build}: ${seconds.toFixed(0)}s, $${(out.total_cost_usd ?? 0).toFixed(3)}, ${out.num_turns} turns, ${Object.keys(out.modelUsage ?? {}).join(",")}`);
-  appendFileSync("data/eval/dev-sessions.jsonl", JSON.stringify({ ts: new Date().toISOString(), build, seconds, cost: out.total_cost_usd, turns: out.num_turns, requirements: reqs.length, result: out.result }) + "\n");
+  appendFileSync("data/eval/dev-sessions.jsonl", JSON.stringify({ ts: new Date().toISOString(), build, noList, seconds, cost: out.total_cost_usd, turns: out.num_turns, requirements: reqs.length, result: out.result }) + "\n");
 } finally {
   await run("git", ["worktree", "remove", "--force", work], { cwd: repo }).catch(() => {});
   await rm(dir, { recursive: true, force: true }).catch(() => {});
