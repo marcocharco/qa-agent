@@ -21,11 +21,16 @@ describe("reconcile", () => {
     expect(reconcile(pass, fail).state).toBe("passed");
     expect(reconcile(err, fail).state).toBe("needs_review");
   });
-  it("an errored check that passes on retry is trusted as flaky, not as a pass", () => {
-    expect(reconcile(err, pass).state).toBe("needs_review");
-  });
   it("keeps the cause when neither run produced a verdict", () => {
     expect(reconcile(err, err)).toMatchObject({ state: "errored", classification: "test_problem" });
     expect(reconcile(down, down)).toMatchObject({ state: "errored", classification: "environment" });
+  });
+
+  it("an errored first run is not an answer: a later pass is simply a pass", () => {
+    expect(reconcile(err, pass).state).toBe("passed");
+    expect(reconcile(down, pass).state).toBe("passed");
+  });
+  it("a real failure against a later pass is still a disagreement", () => {
+    expect(reconcile(fail, pass).state).toBe("needs_review");
   });
 });

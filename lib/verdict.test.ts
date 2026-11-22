@@ -71,5 +71,5 @@ describe("gaveNoVerdict", () => {
   it("is false when any check has a result", () => {
     expect(gaveNoVerdict(run({ results: [{ check: 1, passed: false, failed_step: 1, observed: "x", reason: "y" }] }), 2)).toBe(false);
   });
-  it("is false for an environment failure, which a rerun does not explain", () => expect(gaveNoVerdict({ status: "FAILED", error: "boom", result: null }, 1)).toBe(false));
+  it("is true for a run that failed with no answer, which a rerun can fix", () => expect(gaveNoVerdict({ status: "FAILED", error: "boom", result: null }, 1)).toBe(true));
 });

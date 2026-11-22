@@ -62,6 +62,6 @@ export function toFeatureVerdicts(o: RunnerOutcome, count: number): Verdict[] {
   });
 }
 
-/** The session finished but handed back nothing usable for any check: a harness failure, not a result about the site. */
+/** The session ended with nothing usable for any check (an empty answer, or a run that failed with no details): a harness failure, not a result about the site. */
 export const gaveNoVerdict = (o: RunnerOutcome, count: number) =>
-  toFeatureVerdicts(o, count).every((v) => v.state === "errored" && v.cause === "test_problem");
+  toFeatureVerdicts(o, count).every((v) => v.state === "errored");

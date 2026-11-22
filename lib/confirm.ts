@@ -21,6 +21,8 @@ export function reconcile(first: Verdict, second: Verdict | null): Final {
     return { state: "failed", classification: "bug", failedStep: second.failedStep ?? first.failedStep, reason: second.reason };
   }
   if (first.state === "errored" && second.state === "errored") return fromOne(second);
+  // A run that errored said nothing about the page, so it is not an answer that can disagree. The run that did answer decides.
+  if (first.state === "errored" && second.state === "passed") return { state: "passed", classification: null, failedStep: null, reason: second.reason };
   if (second.state === "passed") {
     return { state: "needs_review", classification: "flaky", failedStep: null, reason: `Runs disagreed. First: ${first.state}, ${first.reason} Second: ${second.state}, ${second.reason}` };
   }
