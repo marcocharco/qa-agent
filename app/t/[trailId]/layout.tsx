@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { TrailTabs } from "@/components/TrailNav";
 import { chip } from "@/components/ui";
 import { getTrail } from "@/lib/queries";
@@ -10,8 +9,7 @@ export default async function TrailLayout({ children, params }: { children: Reac
   if (!trail) notFound();
   return (
     <main className="mx-auto w-full max-w-6xl px-6 pb-24 pt-8">
-      <Link href="/" className="text-sm text-muted hover:text-foreground">&larr; All Trails</Link>
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">{trail.title}</h1>
         <span className={chip}>{trail.state}{trail.branch ? ` · ${trail.branch}` : ""}</span>
       </div>
