@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { forgetRequirement, rememberRequirement } from "@/lib/brain";
-import { addManualRequirement, editRequirement, requirementStatus, setRequirementStatus, type RequirementRow, type Status } from "@/lib/queries";
+import { addManualRequirement, editRequirement, requirementStatus, setRequirementStatus, supersededBy, type RequirementRow, type Status } from "@/lib/queries";
 
 const refresh = () => revalidatePath("/t/[trailId]", "layout");
 
@@ -18,7 +18,13 @@ async function sync(id: string, approved: boolean): Promise<string | null> {
 
 export async function setStatus(id: string, status: Status): Promise<string | null> {
   await setRequirementStatus(id, status);
-  const warning = await sync(id, status === "approved");
+  let warning = await sync(id, status === "approved");
+  // Drift is only applied here, by a human: approving a change retires the requirement it replaces.
+  const old = status === "approved" ? await supersededBy(id) : null;
+  if (old) {
+    await setRequirementStatus(old, "superseded");
+    warning = (await sync(old, false)) ?? warning;
+  }
   refresh();
   return warning;
 }

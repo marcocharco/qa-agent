@@ -68,13 +68,15 @@ export async function syncTrail(cfg: Config, ref: TrailRef): Promise<TrailInfo> 
   );
   if (prev.rows[0]?.sources_hash === hash) return trail;
 
-  const found = await extractRequirements(sources, cfg.model);
+  // Approved requirements anywhere in the project, so a message that changes one is flagged as drift.
+  const existing = (await db().query("select id, text from requirements where status='approved' and testable")).rows as { id: string; text: string }[];
+  const found = await extractRequirements(sources, cfg.model, existing);
   for (const r of found) {
     await db().query(
-      `insert into requirements (id,trail_id,text,type,confidence,testable,untestable_reason,source_kind,source_session_id,source_message_id,quote)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) on conflict do nothing`,
+      `insert into requirements (id,trail_id,text,type,confidence,testable,untestable_reason,source_kind,source_session_id,source_message_id,quote,supersedes_id)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) on conflict do nothing`,
       [randomUUID(), trail.id, r.text, r.type, r.confidence, r.testable, r.reason, r.sourceKind,
-       r.sourceKind === "session" ? r.sourceId : null, r.messageId, r.quote],
+       r.sourceKind === "session" ? r.sourceId : null, r.messageId, r.quote, r.supersedes],
     );
   }
   // Only after a successful extraction, so a Gemini failure is retried on the next push.

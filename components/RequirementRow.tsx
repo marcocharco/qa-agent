@@ -37,6 +37,14 @@ export default function RequirementRow({ r, showTrail = false }: { r: Req; showT
         ) : (
           <p className={`text-[15px] leading-relaxed ${r.status === "rejected" ? "line-through" : ""}`}>{r.text}</p>
         )}
+        {r.supersedes && r.status === "proposed" && (
+          <div className="mt-3 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm">
+            <p className="font-medium text-accent">Changes an earlier requirement</p>
+            <p className="mt-1 text-muted line-through">{r.supersedes.text}</p>
+            <p className="mt-1">{r.text}</p>
+            <p className="mt-1 text-muted">Approving replaces the earlier one and stops testing it.</p>
+          </div>
+        )}
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${statusTone[r.status]}`}>{r.status}</span>
           <span className={chip}>{r.type}</span>
@@ -50,7 +58,7 @@ export default function RequirementRow({ r, showTrail = false }: { r: Req; showT
       </div>
       <div className="flex flex-wrap items-start gap-2 md:justify-end">
         {!editing && <button className={btnGhost} onClick={() => setEditing(true)}>Edit</button>}
-        {r.testable && (r.status === "proposed" || r.status === "rejected") && <button className={btnGhost} disabled={pending} onClick={() => act(() => setStatus(r.id, "approved"))}>Approve</button>}
+        {r.testable && (r.status === "proposed" || r.status === "rejected") && <button className={btnGhost} disabled={pending} onClick={() => act(() => setStatus(r.id, "approved"))}>{r.supersedes ? "Approve change" : "Approve"}</button>}
         {r.status !== "rejected" && <button className={btnGhost} disabled={pending} onClick={() => act(() => setStatus(r.id, "rejected"))}>Reject</button>}
         {r.status === "rejected" && <button className={btnGhost} disabled={pending} onClick={() => act(() => setStatus(r.id, "proposed"))}>Restore</button>}
       </div>

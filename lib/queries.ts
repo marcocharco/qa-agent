@@ -34,25 +34,28 @@ export type RequirementRow = {
   sourceKind: "description" | "session" | "manual";
   quote: string | null;
   edited: boolean;
+  /** The earlier requirement this one changes (drift). It stays active until this one is approved. */
+  supersedes: { id: string; text: string } | null;
 };
 
 const reqCols = `r.id, r.trail_id, t.title as trail_title, r.text, r.type, r.confidence, r.testable, r.untestable_reason,
-  r.status, r.source_kind, r.quote, r.edited_by_human`;
+  r.status, r.source_kind, r.quote, r.edited_by_human, s.id as sup_id, s.text as sup_text`;
 const toReq = (r: Record<string, never>): RequirementRow => ({
   id: r.id, trailId: r.trail_id, trailTitle: r.trail_title, text: r.text, type: r.type, confidence: r.confidence,
   testable: r.testable, untestableReason: r.untestable_reason, status: r.status, sourceKind: r.source_kind,
   quote: r.quote, edited: r.edited_by_human,
+  supersedes: r.sup_id ? { id: r.sup_id, text: r.sup_text } : null,
 });
 
 /** New: this Trail's own asks. Regression: approved asks of other merged Trails (what the orchestrator also runs). */
 export async function listRequirements(trailId: string): Promise<{ fresh: RequirementRow[]; regression: RequirementRow[] }> {
   const fresh = await db().query(
-    `select ${reqCols} from requirements r join trails t on t.id = r.trail_id where r.trail_id = $1
+    `select ${reqCols} from requirements r join trails t on t.id = r.trail_id left join requirements s on s.id = r.supersedes_id where r.trail_id = $1
      order by array_position(array['proposed','approved','rejected','superseded'], r.status), r.testable desc, r.text`,
     [trailId],
   );
   const regression = await db().query(
-    `select ${reqCols} from requirements r join trails t on t.id = r.trail_id
+    `select ${reqCols} from requirements r join trails t on t.id = r.trail_id left join requirements s on s.id = r.supersedes_id
      where r.trail_id <> $1 and r.status = 'approved' and t.state = 'merged' order by t.title, r.text`,
     [trailId],
   );
@@ -60,6 +63,11 @@ export async function listRequirements(trailId: string): Promise<{ fresh: Requir
 }
 
 export type Status = RequirementRow["status"];
+
+/** The requirement this one is meant to replace, if any. */
+export async function supersededBy(id: string): Promise<string | null> {
+  return (await db().query("select supersedes_id from requirements where id = $1", [id])).rows[0]?.supersedes_id ?? null;
+}
 
 export const setRequirementStatus = (id: string, status: Status) => db().query("update requirements set status = $2 where id = $1", [id, status]);
 

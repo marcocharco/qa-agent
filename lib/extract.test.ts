@@ -36,6 +36,7 @@ describe("extractRequirements", () => {
         confidence: 0.9,
         testable: true,
         reason: null,
+        supersedes: null,
         sourceKind: "session",
         sourceId: "sess-1",
         messageId: "m1",
@@ -104,5 +105,15 @@ describe("extractRequirements", () => {
 
     expect(out.map((r) => r.text)).toEqual(["The cart survives a page refresh", "Shop feels fast"]);
     expect(out[1].reason).toBe("No observable outcome");
+  });
+
+  it("flags a requirement that changes an existing one, and ignores ids it was not given", async () => {
+    const base = { type: "behaviour", confidence: 0.9, testable: true, sourceId: "sess-1", messageId: "m1", quote: "the cart should survive a refresh" };
+    const model = fake([
+      { ...base, text: "Annual is 25% off", supersedes: "req-1" },
+      { ...base, text: "Pro is $20 a seat", supersedes: "made-up" },
+    ]);
+    const out = await extractRequirements([session], model, [{ id: "req-1", text: "Annual is 20% off" }]);
+    expect(out.map((r) => r.supersedes)).toEqual(["req-1", null]);
   });
 });

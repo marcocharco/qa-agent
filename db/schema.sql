@@ -87,3 +87,6 @@ alter table checks add column if not exists raw_result jsonb;
 alter table checks add column if not exists attempts int not null default 1;
 alter table checks add column if not exists classification text
   check (classification in ('bug','flaky','environment','test_problem'));
+
+-- Drift: a proposed requirement that changes an earlier one. The earlier one is only superseded when a human approves.
+alter table requirements add column if not exists supersedes_id text references requirements(id);
