@@ -266,9 +266,15 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
         [randomUUID(), checkId, findingId, `**${a.title}**\n\n${a.body}`],
       );
       cfg.log?.(`finding ${findingId} filed`);
-      // Likely line and the prompt behind it. Never blocks or fails the run.
-      await triageCheck(checkId, cfg).catch((e) => cfg.log?.(`triage skipped: ${String(e).slice(0, 120)}`));
     }
+    // Every confirmed failure gets a bug report for this run's check, even when its finding was filed by an earlier run,
+    // and a likely line plus the prompt behind it. Triage never blocks or fails the run.
+    const openNow = await openFindings(ref);
+    await Promise.all(results.filter((r) => !r.passed).map(async (r) => {
+      const has = (await db().query("select 1 from bug_reports where check_id=$1", [r.checkId])).rowCount;
+      if (!has) await db().query("insert into bug_reports (id,check_id,finding_id,summary_md) values ($1,$2,$3,$4)", [randomUUID(), r.checkId, openNow[r.requirementId] ?? null, r.reason]);
+      await triageCheck(r.checkId, cfg).catch((e) => cfg.log?.(`triage skipped: ${String(e).slice(0, 120)}`));
+    }));
     const rec = recommend({
       total: results.length + review + errored, passed, failed, needsReview: review, errored,
       failures: results.filter((r) => !r.passed).map((r) => ({ text: r.requirementText, reason: r.reason, blocking: status.get(r.requirementId) === "approved" })),
