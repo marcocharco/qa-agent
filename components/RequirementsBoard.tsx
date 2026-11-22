@@ -14,7 +14,7 @@ const HIGH = 0.85;
 const matches: Record<Filter, (r: Req) => boolean> = {
   // What is live: asks waiting for review and asks that are approved. Rejected and replaced ones have their own tab.
   all: (r) => r.status === "proposed" || r.status === "approved",
-  review: (r) => r.status === "proposed" && r.testable,
+  review: (r) => r.status === "proposed",
   approved: (r) => r.status === "approved",
   rejected: (r) => r.status === "rejected" || r.status === "superseded",
 };
