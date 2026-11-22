@@ -44,6 +44,17 @@ export async function compileCached(r: { id: string; text: string }, cfg: Config
   return c;
 }
 
+/** At most `n` browser sessions at once across the whole run, however many checks are waiting for one. */
+function limiter(n: number) {
+  let active = 0;
+  const waiting: (() => void)[] = [];
+  return async <T,>(fn: () => Promise<T>): Promise<T> => {
+    if (active >= n) await new Promise<void>((r) => waiting.push(r));
+    active++;
+    try { return await fn(); } finally { active--; waiting.shift()?.(); }
+  };
+}
+
 /** Run at most `limit` tasks at once. A throwing task never stops the others. */
 async function pool<T>(limit: number, items: T[], task: (item: T) => Promise<void>) {
   const queue = [...items];
@@ -156,6 +167,7 @@ export async function processTrail(cfg: Config, ref: TrailRef, opts: { only?: st
   }
   cfg.log?.(`run ${runId}: ${reqs.length} requirements (${reqs.filter((r) => r.kind === "new").length} new)${opts.only ? ", single rerun" : ""}`);
 
+  const slot = limiter(cfg.concurrency);
   const results: (CheckResult & { checkId: string })[] = [];
   let errored = 0;
   let review = 0; // flaky or unconfirmed: shown to a human, never a finding
@@ -196,10 +208,10 @@ export async function processTrail(cfg: Config, ref: TrailRef, opts: { only?: st
         cfg.log?.(`session "${label}"${tag}: ${items.length} checks`);
         const ids = items.map((c) => c.checkId);
         const goal = renderFeatureGoal(items.map((c) => c.spec));
-        const start = () => runFeature(goal, cfg.targetUrl, items.length, {
+        const start = () => slot(() => runFeature(goal, cfg.targetUrl, items.length, {
           onStreamingUrl: (u) => void db().query("update checks set streaming_url=$2 where id = any($1)", [ids, u]),
           onProgress: (p) => void db().query("update checks set now_text=$2 where id = any($1)", [ids, p]),
-        });
+        }));
         // The agent sometimes finishes its browsing and then hands back an empty list. That says nothing about the site,
         // so the session is simply run again (up to twice) before anything counts as a verdict.
         let run = await start();
@@ -223,10 +235,9 @@ export async function processTrail(cfg: Config, ref: TrailRef, opts: { only?: st
       const attempt = (run: CheckRun) => ({ runId: run.runId, status: run.status, error: run.error, result: run.result, streamingUrl: run.streamingUrl });
       const first = await session(compiled, "");
       const retry = compiled.filter((_, i) => needsSecondRun(first.verdicts[i]));
-      // A session that lost its place (no result for a check) is not rerun as is: long sessions are what made the agent
-      // drop its task, so a check with no verdict is confirmed in a session of its own.
-      const split = retry.some((c) => first.verdicts[compiled.indexOf(c)].state === "errored");
-      const batches = !retry.length ? [] : split ? retry.map((c) => [c]) : [retry];
+      // Each check that did not pass is confirmed in a session of its own, in parallel with the others (the slots keep the
+      // total within the browser limit). Isolated, so the first session's leftover page state cannot explain the second answer.
+      const batches = retry.map((c) => [c]);
       const confirmed = new Map<(typeof compiled)[number], { s: Awaited<ReturnType<typeof session>>; j: number }>();
       await Promise.all(batches.map(async (items) => {
         const s = await session(items, " (confirming)");

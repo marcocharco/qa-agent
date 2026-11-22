@@ -76,8 +76,11 @@ export function renderFeatureGoal(specs: CheckSpec[]): string {
       return `CHECK ${i + 1}\n${pre}Steps:\n${steps}\nExpected: ${spec.expected}`;
     })
     .join("\n\n");
-  return `You are testing one feature of a web page in a single browser session. Run the checks below one after another, in order.
-Before every check, reload the page so it starts from a fresh state, then do exactly that check's steps and nothing else.
+  const flow = specs.length > 1
+    ? `You are testing one feature of a web page in a single browser session, with several checks below.
+Work in one page and do not repeat work. You do not need to reload between checks. Before each check, bring the page to exactly the state that check names (plan, billing mode, seat count, and whether the SAVE10 coupon is applied; clear a coupon left over from an earlier check if this check does not mention one), changing the controls from where they are now. Take the checks in whatever order saves clicks (for example read 9 seats, then press plus once to read 10 seats), but report each result under its own check number. Reload only if you cannot reach a state any other way.`
+    : "You are testing one feature of a web page in a single browser session. Start from the page as it opens, then do exactly the check's steps and nothing else.";
+  return `${flow}
 There are ${specs.length} check${specs.length === 1 ? "" : "s"}. Your final answer must contain exactly ${specs.length} result${specs.length === 1 ? "" : "s"}, one per check, even if a check failed.
 
 ${checks}
@@ -89,5 +92,5 @@ Rules:
 - After the steps and before reading, scroll down until the totals and every discount line are visible, so the result is on screen.
 - Only then compare "observed" with Expected. passed is true only if they match exactly. Do not assume anything passed.
 - "check" is the check number. failed_step is a step number inside that check, or null if the check passed. If every step could be done but the page differs from Expected, give the last step of that check.
-- Return exactly one result for every check, in order. Never return an empty list: if a check cannot be started or finished for any reason, still return its result with passed set to false, observed set to what you saw instead, and the reason.`;
+- Return exactly one result for every check, in check order. Never return an empty list: if a check cannot be started or finished for any reason, still return its result with passed set to false, observed set to what you saw instead, and the reason.`;
 }
