@@ -50,12 +50,26 @@ async function changedSources(dir: string, base: string): Promise<Map<string, st
   return out;
 }
 
+/** Entire Graph's ranked, budgeted regions for a plain-language description of the failure. Null when unavailable. */
+async function graphContext(dir: string, query: string): Promise<string | null> {
+  try {
+    const { stdout } = await git("entire", ["graph", "query", "--format", "agent", "--head", "--profile", "full", query], { cwd: dir, maxBuffer: 8 * 1024 * 1024, timeout: 60_000 });
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Finds the line most likely behind a failed check, then the prompt that wrote it (entire why). Best effort: any step
  * that cannot be done leaves the bug report without that level. Works on a throwaway worktree of the Trail's branch so
  * the operator's checkout never matters.
  */
-export async function triageCheck(checkId: string, cfg: { repoDir: string; model: StructuredModel; log?: (m: string) => void }) {
+export async function triageCheck(
+  checkId: string,
+  cfg: { repoDir: string; model: StructuredModel; log?: (m: string) => void },
+  opts: { context?: "files" | "graph"; dryRun?: boolean } = {},
+) {
   const row = (await db().query(
     `select r.text, c.reason, t.branch, b.id as bug_id from checks c join requirements r on r.id = c.requirement_id
        join runs u on u.id = c.run_id join trails t on t.id = u.trail_id left join bug_reports b on b.check_id = c.id where c.id = $1`, [checkId])).rows[0];
@@ -66,7 +80,9 @@ export async function triageCheck(checkId: string, cfg: { repoDir: string; model
     await git("git", ["worktree", "add", "--detach", dir, `origin/${row.branch}`], { cwd: cfg.repoDir });
     const files = await changedSources(dir, "origin/main");
     if (!files.size) return null;
-    const code = [...files].map(([f, t]) => `=== ${f}\n${numbered(t)}`).join("\n\n");
+    // "files": every changed file, whole. "graph": only the regions Entire Graph ranks for this failure.
+    const graph = opts.context !== "files" ? await graphContext(dir, `${row.text}. ${row.reason}`) : null;
+    const code = graph ?? [...files].map(([f, t]) => `=== ${f}\n${numbered(t)}`).join("\n\n");
     const prompt = `A browser test of a web app failed. Find the line of code that most likely causes it.
 
 Requirement: ${row.text}
@@ -77,17 +93,18 @@ Rules:
 - Copy that line exactly into line_text, and give its line number.
 - Prefer a real cause over a symptom. Do not guess a file that is not listed.
 
-Code changed by this branch:
+${graph ? "Code regions ranked as most relevant (file:line shown inline):" : "Code changed by this branch:"}
 ${code}`;
     const pick = validatePick(Answer.parse(await cfg.model(prompt, Answer)), files);
     if (!pick) return null;
     const a = await attributeLine(pick.file, pick.line, dir).catch(() => null);
+    if (opts.dryRun) return { ...pick, attribution: a, contextChars: code.length };
     await db().query(
       "update bug_reports set file=$2, line=$3, cause=$4, commit_sha=$5, checkpoint_id=$6, prompt_session_id=$7, prompt_message_id=$8, prompt_text=$9 where id=$1",
       [row.bug_id, pick.file, pick.line, pick.why, a?.commitSha ?? null, a?.checkpointId ?? null, a?.sessionId ?? null, a?.prompt?.messageId ?? null, a?.prompt?.text ?? a?.fallbackPrompt ?? null],
     );
     cfg.log?.(`triage: ${pick.file}:${pick.line}${a?.prompt ? " (prompt found)" : ""}`);
-    return { ...pick, attribution: a };
+    return { ...pick, attribution: a, contextChars: code.length };
   } finally {
     await git("git", ["worktree", "remove", "--force", dir], { cwd: cfg.repoDir }).catch(() => {});
     await rm(dir, { recursive: true, force: true }).catch(() => {});
