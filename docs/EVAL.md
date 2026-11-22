@@ -1,6 +1,6 @@
 # Eval design: can an AI browser agent find the planted bugs, and how reliably?
 
-Status: designed, not built or run. Nothing in this file has been measured yet.
+Status: designed and the harness built, but scaled back after a first spot check showed a Claude agent beating ArcherFish on cost and time for this page. See `docs/EVAL-SPOT-CHECK.md`. The full run is not planned.
 
 ## 1. What an eval is (read this first)
 
