@@ -29,7 +29,7 @@ export async function buildReport(trailId: string): Promise<ReportDoc | null> {
     const detail = await getCheck(c.check!.id);
     const r = detail?.replay;
     const { claim, saw } = splitReason(c.check!.reason);
-    return { checkId: c.check!.id, state: c.state, label: shortLabel(c.req.text, 70), text: c.req.text, claim, saw, frame: r ? (collapseSteps(r.steps.slice(r.start, r.end + 1)).at(-1)?.file ?? null) : null };
+    return { checkId: c.check!.id, state: c.state, label: shortLabel(c.req.text, 70), text: c.req.text, claim, saw, frame: r ? (collapseSteps(r.steps.slice(r.start, r.end + 1), r.cursors).at(-1)?.file ?? null) : null };
   }));
   proof.sort((a, b) => rank[a.state] - rank[b.state]);
 

@@ -34,4 +34,23 @@ describe("collapseSteps", () => {
   it("keeps different actions apart and strips check bookkeeping", () => {
     expect(collapseSteps(fr("Reload page for CHECK 2 fresh state", "Select Team plan for Check 2")).map((g) => g.label)).toEqual(["Open the page", "Select Team plan"]);
   });
+
+  describe("with cursor positions", () => {
+    const frames = (...a: string[]) => a.map((action, i) => ({ action, durationS: 1, file: `f${i}.png` }));
+    const cur = (...p: ([number, number] | null)[]) => Object.fromEntries(p.map((x, i) => [`f${i}.png`, x && { x: x[0], y: x[1] }]));
+    it("drops steps where nothing was done and keeps their picture on the step before", () => {
+      const g = collapseSteps(frames("Navigate to the page", "Switch billing to Annual", "Apply coupon", "Extract exact prices", "See the page"), cur([0.1, 0.1], [0.5, 0.2], [0.7, 0.3], [0.7, 0.3], [0.7, 0.3]));
+      expect(g.map((x) => x.label)).toEqual(["Open the page", "Switch billing to Annual", "Apply coupon"]);
+      expect(g[2].file).toBe("f4.png");
+      expect(g[2].frames).toHaveLength(1);
+    });
+    it("keeps a step where only the cursor moved", () => {
+      const g = collapseSteps(frames("Navigate to the page", "Hover the coupon box"), cur([0.1, 0.1], [0.4, 0.4]));
+      expect(g.map((x) => x.label)).toEqual(["Open the page", "Hover the coupon box"]);
+    });
+    it("does not count a reload, even if the cursor jumped", () => {
+      const g = collapseSteps(frames("Navigate to the page", "Select Team plan", "Reload page fresh", "Set seats to 3"), cur([0.1, 0.1], [0.5, 0.5], [0.9, 0.9], [0.2, 0.2]));
+      expect(g.map((x) => x.label)).toEqual(["Open the page", "Select Team plan", "Set seats to 3"]);
+    });
+  });
 });

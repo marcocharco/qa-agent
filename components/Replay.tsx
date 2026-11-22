@@ -4,7 +4,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { collapseSteps } from "@/lib/collapse";
+import { CLICK, collapseSteps } from "@/lib/collapse";
 
 export type ReplayData = {
   steps: { action: string; durationS: number | null; file: string | null }[];
@@ -16,7 +16,6 @@ export type ReplayData = {
   end: number;
 };
 
-const CLICK = /\b(click|press|tap|select|increase|decrease|set|apply|switch|toggle|choose|submit|add|remove)\b/i;
 const src = (file: string) => `/api/replay/${file}`;
 
 /** What the agent did, one frame per step, opening on the moment it went wrong. */
@@ -29,7 +28,7 @@ export default function Replay({ r, failing, checkId }: { r: ReplayData; failing
     return () => { stop = true; };
   }, [failing, checkId]);
   // Logical steps only: repeated clicks and back-to-back page reads collapse into one.
-  const frames = useMemo(() => collapseSteps(r.steps.slice(r.start, r.end + 1)), [r]);
+  const frames = useMemo(() => collapseSteps(r.steps.slice(r.start, r.end + 1), r.cursors), [r]);
   const last = Math.max(0, frames.length - 1);
   const [i, setI] = useState(failing ? last : 0);
   const [mode, setMode] = useState<"steps" | "video">("steps");

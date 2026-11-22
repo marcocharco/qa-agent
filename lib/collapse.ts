@@ -1,5 +1,6 @@
 // Turns the agent's raw step list into the few logical steps a person wants to read. Pure, so it is easy to test.
 export type Frame = { action: string; durationS: number | null; file: string | null };
+export type Pt = { x: number; y: number };
 export type Group = { label: string; /** Only the agent reading the page */ look: boolean; frames: Frame[]; durationS: number | null; /** The frame to show: the last one with a screenshot */ file: string | null };
 
 /** Drops the agent's own bookkeeping ("for Check 2", "CHECK 1 step 3:"). */
@@ -11,6 +12,8 @@ const LOOK = /^(check|visual check|understand|confirm|recheck|re-check|get|full 
 const NOISE = /^(finish|finished|complete|completed|report|task|return|done|submit)\b/i;
 const SETUP = /^(reload|navigate|refresh|open|go to|visit)\b/i;
 const isLook = (a: string) => LOOK.test(a);
+/** The agent clicking, pressing or typing: something a person would have to do. */
+export const CLICK = /\b(click|press|tap|select|increase|decrease|set|apply|switch|toggle|choose|submit|add|remove|enter|type|input|fill)\b/i;
 /** Same action, different numbers: "Increase seats to 4", "Increase seats to 5". */
 const shape = (a: string) => a.replace(/\bfrom \d+ /i, "").replace(/\d+/g, "#");
 
@@ -24,8 +27,27 @@ function labelOf(frames: Frame[]): string {
   return shape(first) === shape(last) && /\d/.test(last) ? `${last} (×${frames.length})` : last;
 }
 
-export function collapseSteps(all: Frame[]): Group[] {
-  const frames = all.filter((f, i) => !NOISE.test(cleanAction(f.action)) || i === 0);
+/**
+ * With the cursor positions of each screenshot, a step only counts if a person would have to do something: the cursor
+ * moved, or the agent clicked or typed. Anything else (reading, extracting, checking) is not a step. Its screenshot is kept
+ * as the picture of the step before it, so the page as it ended up is still what that step shows.
+ */
+export function collapseSteps(all: Frame[], cursors?: Record<string, Pt | null>): Group[] {
+  const moved = (i: number) => {
+    const a = cursors?.[all[i - 1]?.file ?? ""], b = cursors?.[all[i]?.file ?? ""];
+    return !!a && !!b && Math.hypot(a.x - b.x, a.y - b.y) > 0.004;
+  };
+  const extra = new Map<Frame, Frame[]>();
+  const frames: Frame[] = [];
+  all.forEach((f, i) => {
+    const a = cleanAction(f.action);
+    if (NOISE.test(a) && i !== 0) return;
+    // The first reload or navigation is "Open the page". After that, a step needs the cursor to move, or a click or typing.
+    const interactive = !cursors || (SETUP.test(a) ? !frames.some((x) => SETUP.test(cleanAction(x.action))) : !isLook(a) && (CLICK.test(a) || moved(i)));
+    if (interactive || (!cursors && !frames.length)) frames.push(f);
+    else if (frames.length && !SETUP.test(a)) extra.set(frames[frames.length - 1], [...(extra.get(frames[frames.length - 1]) ?? []), f]);
+  });
+  if (!frames.length && all.length) frames.push(all[all.length - 1]);
   const out: Frame[][] = [];
   for (const f of frames) {
     const prev = out[out.length - 1]?.at(-1);
@@ -39,8 +61,8 @@ export function collapseSteps(all: Frame[]): Group[] {
       label: labelOf(fs),
       look,
       frames: fs,
-      durationS: fs.some((f) => f.durationS != null) ? Math.round(fs.reduce((s, f) => s + (f.durationS ?? 0), 0) * 10) / 10 : null,
-      file: [...fs].reverse().find((f) => f.file)?.file ?? null,
+      durationS: fs.some((f) => f.durationS != null) ? Math.round(fs.flatMap((f) => [f, ...(extra.get(f) ?? [])]).reduce((s, f) => s + (f.durationS ?? 0), 0) * 10) / 10 : null,
+      file: [...fs.flatMap((f) => [f, ...(extra.get(f) ?? [])])].reverse().find((f) => f.file)?.file ?? null,
     };
   });
   // The agent looking at the page is not something a person needs to repeat. The last look stays: it is the evidence frame.

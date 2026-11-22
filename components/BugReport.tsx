@@ -22,7 +22,7 @@ export default function BugReport({ check, findingOpen }: { check: CheckDetail; 
 
   // Steps to reproduce are the test's own steps, what a person would do. The agent's action log (looking at the page,
   // reloading, checking) is not reproducible detail. The failing step is the one the agent named, else the last.
-  const steps = c.specSteps.length ? c.specSteps : c.replay ? collapseSteps(c.replay.steps.slice(c.replay.start, c.replay.end + 1)).map((g) => g.label) : c.steps;
+  const steps = c.specSteps.length ? c.specSteps : c.replay ? collapseSteps(c.replay.steps.slice(c.replay.start, c.replay.end + 1), c.replay.cursors).map((g) => g.label) : c.steps;
   const failedStep = c.status === "failed" || c.status === "errored" ? (c.failedStep && c.failedStep <= steps.length ? c.failedStep : steps.length) : null;
   const data: ReportData = {
     requirement: c.requirement, trailTitle: c.trailTitle, commit: c.commit, verdict: c.status === "errored" ? "errored" : "failed",

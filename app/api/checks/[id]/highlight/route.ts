@@ -9,7 +9,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const c = await getCheck(id);
   if (!c?.replay || c.status !== "failed") return Response.json({ highlight: null });
   // The same evidence frame the replay ends on.
-  const file = collapseSteps(c.replay.steps.slice(c.replay.start, c.replay.end + 1)).at(-1)?.file;
+  const file = collapseSteps(c.replay.steps.slice(c.replay.start, c.replay.end + 1), c.replay.cursors).at(-1)?.file;
   if (!file) return Response.json({ highlight: null });
   const cached = (await db().query("select highlight from checks where id=$1", [id])).rows[0]?.highlight as Highlight | null;
   if (cached?.file === file) return Response.json({ highlight: cached });
