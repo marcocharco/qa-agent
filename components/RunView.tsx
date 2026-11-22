@@ -6,6 +6,7 @@ import { setStatus } from "@/app/actions";
 import { buildCards, defaultCard, groupByFeature, shortLabel, splitReason, summarize, titleCase, verdictOf, type Card, type Verdict } from "@/lib/overview";
 import type { Live, RequirementRow } from "@/lib/queries";
 import Replay, { type ReplayData } from "./Replay";
+import RerunTest from "./RerunTest";
 import RunNow from "./RunNow";
 import StatusIcon from "./StatusIcon";
 import { ago, btnGhost } from "./ui";
@@ -180,6 +181,7 @@ export default function RunView({ trailId, fresh, regression, initial }: { trail
                 <p className="flex min-w-0 items-center gap-2.5 font-medium"><StatusIcon state={sel.state} /><span className="truncate">{shortLabel(sel.req.text, 80)}</span></p>
                 <div className="flex shrink-0 items-center gap-3">
                   {sel.state === "proposed" && <button className={btnGhost} onClick={() => void setStatus(sel.req.id, "approved")}>Approve</button>}
+                  {sel.state !== "proposed" && sel.state !== "todo" && sel.state !== "running" && <RerunTest trailId={trailId} requirementId={sel.req.id} disabled={running || !!job?.running || starting} onStart={() => { setStarting(true); void poll().finally(() => setStarting(false)); }} />}
                   {sel.state === "failed" && sel.check && <Link className="text-sm font-medium text-accent hover:underline" href={`/t/${trailId}/checks/${sel.check.id}`}>Bug report →</Link>}
                 </div>
               </div>

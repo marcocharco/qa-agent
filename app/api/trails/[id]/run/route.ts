@@ -9,11 +9,13 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   return Response.json({ ok: true });
 }
 
-export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const missing = missingEnv();
   if (missing.length) return Response.json({ error: `Missing environment variables: ${missing.join(", ")}. See .env.example.` }, { status: 500 });
   try {
-    await startRun((await params).id);
+    // An optional requirement id reruns just that test.
+    const only = (await req.json().catch(() => ({}))).requirementId as string | undefined;
+    await startRun((await params).id, only);
     return Response.json({ ok: true });
   } catch (e) {
     return Response.json({ error: `Could not start the run: ${String(e).slice(0, 200)}` }, { status: 400 });

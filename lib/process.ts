@@ -39,10 +39,11 @@ export function jobStatus(trailId: string) {
   return { running: j.exitCode === null, exitCode: j.exitCode, log: j.log.slice(-6), problem };
 }
 
-export async function startRun(trailId: string) {
+/** `only` reruns a single requirement inside the latest run. */
+export async function startRun(trailId: string, only?: string) {
   if (jobs.get(trailId)?.exitCode === null) return;
   const number = await trailNumber(trailId);
-  const proc = spawn("npx", ["tsx", "--env-file=.env.local", "scripts/orchestrate.mts", number], { cwd: process.cwd(), env: process.env, stdio: ["ignore", "pipe", "pipe"], detached: true });
+  const proc = spawn("npx", ["tsx", "--env-file=.env.local", "scripts/orchestrate.mts", number, ...(only ? ["--only", only] : [])], { cwd: process.cwd(), env: process.env, stdio: ["ignore", "pipe", "pipe"], detached: true });
   const job: Job = { proc, log: [], exitCode: null, startedAt: Date.now() };
   const push = (l: string) => { job.log.push(l); if (job.log.length > 200) job.log.shift(); };
   createInterface({ input: proc.stdout! }).on("line", push);

@@ -1,4 +1,4 @@
-// Usage: npx tsx --env-file=.env.local scripts/orchestrate.mts <trail-number> [--watch]
+// Usage: npx tsx --env-file=.env.local scripts/orchestrate.mts <trail-number> [--watch] [--only <requirement id>]
 // One run now, or with --watch: run again on every new push to the Trail's branch.
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
@@ -18,6 +18,7 @@ const cfg: Config = {
   log: (m) => console.log(new Date().toISOString().slice(11, 19), m),
 };
 const ref = { project: cfg.project, trail };
+const only = process.argv.includes("--only") ? process.argv[process.argv.indexOf("--only") + 1] : undefined;
 
 let busy = false;
 let again = false;
@@ -25,7 +26,7 @@ async function runIfNew(force = false) {
   if (busy) return void (again = true);
   busy = true;
   try {
-    if (force || (await needsRun(cfg, ref))) console.log(await processTrail(cfg, ref));
+    if (force || (await needsRun(cfg, ref))) console.log(await processTrail(cfg, ref, { only }));
   } catch (e) {
     console.error("run failed:", e);
   } finally {

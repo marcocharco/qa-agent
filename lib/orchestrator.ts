@@ -123,8 +123,9 @@ const headSha = async (cfg: Config, branch: string) =>
   (await execGit("git", ["ls-remote", "origin", branch], { cwd: cfg.repoDir })).stdout.split("\t")[0] || (() => { throw new Error(`branch ${branch} not found on origin`); })();
 
 /** One Trail push: sync merged Trails and this Trail, run every requirement in parallel, file findings. */
-export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId: string; passed: number; failed: number; errored: number; needsReview: number }> {
-  for (const n of await mergedTrailNumbers(cfg.project)) {
+export async function processTrail(cfg: Config, ref: TrailRef, opts: { only?: string } = {}): Promise<{ runId: string; passed: number; failed: number; errored: number; needsReview: number }> {
+  // Rerunning one requirement never re-reads the Trail: no extraction, no model calls beyond that requirement's own.
+  for (const n of opts.only ? [] : await mergedTrailNumbers(cfg.project)) {
     if (n === ref.trail) continue;
     try {
       await syncTrail(cfg, { project: cfg.project, trail: n });
@@ -132,12 +133,22 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
       cfg.log?.(`merged Trail ${n} not synced: ${String(e).slice(0, 120)}`);
     }
   }
-  const trail = await syncTrail(cfg, ref);
+  const trail = opts.only ? await showTrail(ref) : await syncTrail(cfg, ref);
   const sha = trail.branch ? await headSha(cfg, trail.branch) : "no-branch";
-  const reqs = await selectRequirements(trail.id);
-  const runId = randomUUID();
-  await db().query("insert into runs (id,trail_id,head_sha) values ($1,$2,$3)", [runId, trail.id, sha]);
-  cfg.log?.(`run ${runId}: ${reqs.length} requirements (${reqs.filter((r) => r.kind === "new").length} new)`);
+  const reqs = (await selectRequirements(trail.id)).filter((r) => !opts.only || r.id === opts.only);
+  // A single rerun replaces that requirement's check inside the latest run, so every other result stays exactly as it was.
+  const latest = opts.only ? (await db().query("select id from runs where trail_id=$1 and (finished_at is null or exists (select 1 from checks c where c.run_id = runs.id)) order by started_at desc limit 1", [trail.id])).rows[0]?.id as string | undefined : undefined;
+  const runId = latest ?? randomUUID();
+  if (latest) {
+    const old = "select id from checks where run_id=$1 and requirement_id = any($2)";
+    await db().query(`delete from steps where check_id in (${old})`, [runId, reqs.map((r) => r.id)]);
+    await db().query(`delete from bug_reports where check_id in (${old})`, [runId, reqs.map((r) => r.id)]);
+    await db().query("delete from checks where run_id=$1 and requirement_id = any($2)", [runId, reqs.map((r) => r.id)]);
+    await db().query("update runs set finished_at=null where id=$1", [runId]);
+  } else {
+    await db().query("insert into runs (id,trail_id,head_sha) values ($1,$2,$3)", [runId, trail.id, sha]);
+  }
+  cfg.log?.(`run ${runId}: ${reqs.length} requirements (${reqs.filter((r) => r.kind === "new").length} new)${opts.only ? ", single rerun" : ""}`);
 
   const results: (CheckResult & { checkId: string })[] = [];
   let errored = 0;
@@ -275,22 +286,36 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
       if (!has) await db().query("insert into bug_reports (id,check_id,finding_id,summary_md) values ($1,$2,$3,$4)", [randomUUID(), r.checkId, openNow[r.requirementId] ?? null, r.reason]);
       await triageCheck(r.checkId, cfg).catch((e) => cfg.log?.(`triage skipped: ${String(e).slice(0, 120)}`));
     }));
+    // A single rerun judges the whole run again from what is stored, so the summary still covers every check.
+    const all = opts.only ? await runTotals(runId) : { passed, failed, review, errored, failures: results.filter((r) => !r.passed).map((r) => ({ text: r.requirementText, reason: r.reason, blocking: status.get(r.requirementId) === "approved" })) };
     const rec = recommend({
-      total: results.length + review + errored, passed, failed, needsReview: review, errored,
-      failures: results.filter((r) => !r.passed).map((r) => ({ text: r.requirementText, reason: r.reason, blocking: status.get(r.requirementId) === "approved" })),
+      total: all.passed + all.failed + all.review + all.errored, passed: all.passed, failed: all.failed, needsReview: all.review, errored: all.errored,
+      failures: all.failures,
     });
     // A run that tested nothing has no recommendation to give, and must not replace the last real one.
-    if (results.length + review > 0) {
+    if (all.passed + all.failed + all.review > 0) {
       await postSummary(rec.text, ref);
       cfg.log?.(`recommendation: ${rec.verdict}`);
     }
   } finally {
     // The run row is always closed out, and an all-errored run shows as errored, not as 0 failures.
-    await db().query("update runs set finished_at=now(), passed_count=$2, failed_count=$3, errored_count=$4 where id=$1", [runId, passed, failed, errored]);
+    const t = opts.only ? await runTotals(runId) : { passed, failed, errored };
+    await db().query("update runs set finished_at=now(), passed_count=$2, failed_count=$3, errored_count=$4 where id=$1", [runId, t.passed, t.failed, t.errored]);
   }
-  // Marked done only now, so a run that threw is picked up again on the next event.
-  await db().query("update trails set last_head_sha=$2 where id=$1", [trail.id, sha]);
+  // Marked done only now, so a run that threw is picked up again on the next event. A single rerun never marks the push as done.
+  if (!opts.only) await db().query("update trails set last_head_sha=$2 where id=$1", [trail.id, sha]);
   return { runId, passed, failed, errored, needsReview: review };
+}
+
+/** Totals of a run as stored, with the failures that hold the merge. */
+async function runTotals(runId: string) {
+  const { rows } = await db().query(
+    `select r.text, r.status, c.passed, c.classification, c.reason from checks c join requirements r on r.id = c.requirement_id where c.run_id = $1`, [runId]);
+  const passed = rows.filter((r) => r.passed === true).length;
+  const bad = rows.filter((r) => r.passed === false);
+  const review = rows.filter((r) => r.passed === null && r.classification === "flaky").length;
+  const errored = rows.filter((r) => r.passed === null && r.classification !== "flaky").length;
+  return { passed, failed: bad.length, review, errored, failures: bad.map((r) => ({ text: r.text as string, reason: (r.reason ?? "") as string, blocking: r.status === "approved" })) };
 }
 
 /** Skip pushes we already ran, so our own findings (which also emit Trail events) never loop. */

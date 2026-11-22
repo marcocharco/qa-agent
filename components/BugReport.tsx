@@ -1,6 +1,7 @@
 "use client";
 
 import { collapseSteps } from "@/lib/collapse";
+import RerunTest from "./RerunTest";
 import { useState } from "react";
 import { claudeCodeSummary, reportMarkdown, type ReportData } from "@/lib/report";
 import type { CheckDetail } from "@/lib/queries";
@@ -158,6 +159,7 @@ export default function BugReport({ check, findingOpen }: { check: CheckDetail; 
         ) : (
           <p className="text-sm text-muted">No Entire finding was filed for this check.</p>
         )}
+        <span className="ml-auto"><RerunTest trailId={c.trailId} requirementId={c.requirementId} goToRun /></span>
         {error && <p className="w-full text-sm text-fail">{error}</p>}
       </section>
     </div>
