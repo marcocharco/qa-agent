@@ -41,9 +41,13 @@ The findings gate should read "failed" and the Trail "not mergeable". If it says
 ```
 entire brain hook pre-edit --file lib/pricing.ts
 ```
-This is what Brain knows about `lib/pricing.ts`: the requirements recorded for it. The demo repo's edit hook (`.claude/hooks/brain-gate.sh`, source in `demo/brain/`) turns that into a gate. Start a fresh Claude Code session in this folder and ask it to make the Team discount start above 10 seats. When it tries to edit `lib/pricing.ts`, Claude Code stops and asks you to approve, showing the recorded requirements, including "Team gets 5% off the subtotal at 10 or more seats". Decline, or approve to show the human stays in charge.
+This is what Brain knows about `lib/pricing.ts`. The demo repo's hook (`.claude/hooks/brain-gate.py`, source in `demo/brain/`) turns it into a hard gate. In a fresh Claude Code session in this folder, send:
 
-Say "Brain holds the edit until a human approves", and be accurate about the limit: it covers the edit tools, so an agent that edits through the shell is not stopped.
+> for the Team volume tier, apply the discount once they're over 10 seats, so use a strict seats > 10 comparison in the volume helper and keep the config at 10. make the change.
+
+The agent tries to edit `lib/pricing.ts`, the hook blocks it, and the agent tells you which requirement the change would break ("Team gets 5% off the subtotal at 10 or more seats ... $275.50") and how to approve. To show approval, type `! touch .claude/brain-approved`, say "go ahead", and it makes the edit. Afterwards run `git checkout -- lib/pricing.ts app/page.tsx` in the demo repo.
+
+Say "Brain holds the change until a human approves", and keep the limit in mind: it is a path pattern, not a sandbox. Start a fresh `claude` session before presenting (hooks load at startup) and check the tree is clean.
 
 ## If someone asks "is any of this hardcoded?" (tab 3)
 
