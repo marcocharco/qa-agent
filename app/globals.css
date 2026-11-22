@@ -76,15 +76,16 @@ dialog::backdrop {
 .live-dot { position: relative; display: inline-block; width: 8px; height: 8px; border-radius: 9999px; background: var(--accent); }
 .live-dot::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--accent); animation: live-ring 1.6s var(--ease-out) infinite; }
 
-/* The step the agent is on: a soft diagonal sweep of light runs across the text, so it reads as still working. */
-@keyframes shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+/* The step the agent is on: a soft diagonal sweep of light runs across the text, so it reads as still working.
+   Each row starts at the wall-clock phase (animation-delay set from Date.now), so a row that appears mid-sweep continues it. */
+@keyframes sweep { from { background-position: 120% 0; } to { background-position: -120% 0; } }
 .shimmer {
   color: transparent;
   background-image: linear-gradient(115deg, var(--foreground) 0%, var(--foreground) 35%, color-mix(in srgb, var(--foreground) 22%, transparent) 50%, var(--foreground) 65%, var(--foreground) 100%);
   background-size: 250% 100%;
   -webkit-background-clip: text;
   background-clip: text;
-  animation: shimmer 2.4s linear infinite;
+  animation: sweep 2.4s linear infinite;
 }
 
 /* Reduced motion keeps the information and drops the movement. */

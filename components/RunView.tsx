@@ -24,6 +24,13 @@ function StartingPanel({ job }: { job: Job }) {
   );
 }
 
+/** The sweep runs on the wall clock: whatever row is current joins it where it is, so a new row never restarts it. */
+const SWEEP_MS = 2400;
+function Shimmer({ text }: { text: string }) {
+  const [delay] = useState(() => -(Date.now() % SWEEP_MS));
+  return <span className="shimmer truncate" style={{ animationDelay: `${delay}ms` }} title={text}>{text}</span>;
+}
+
 const ROW = 28;
 const FADE = "linear-gradient(to bottom, transparent, black 30%, black 70%, transparent)";
 
@@ -32,29 +39,28 @@ const FADE = "linear-gradient(to bottom, transparent, black 30%, black 70%, tran
  * below. When the agent moves on, everything slides up one row and the new action rises into the middle.
  * "Next" is the test's next step, since the agent does not announce its own.
  */
-function Feed({ now, steps }: { now: string | null; steps: string[] }) {
-  const [st, setSt] = useState({ cur: now, hist: [] as { id: number; text: string }[], idx: 0, n: 0 });
-  if (now && now !== st.cur) {
-    setSt({
-      cur: now, n: st.n + 1, idx: currentStep(now, steps, st.idx),
-      hist: st.cur ? [...st.hist, { id: st.n, text: st.cur }].slice(-40) : st.hist,
-    });
-  }
-  const next = steps[st.idx + 1] ?? (st.idx + 1 === steps.length ? "Read the result" : null);
+function Feed({ trace, steps }: { trace: string[]; steps: string[] }) {
+  // The roller is a pure view of the trace kept above, so it is the same after leaving and coming back.
+  const cur = trace.at(-1) ?? null;
+  const hist = trace.slice(0, -1);
+  const base = trace.length - 1 - hist.length; // absolute index of the first kept row, for stable keys
+  let idx = 0;
+  for (const a of trace) idx = currentStep(a, steps, idx);
+  const next = steps[idx + 1] ?? (idx + 1 === steps.length ? "Read the result" : null);
   const rows = [
-    ...st.hist.map((h) => ({ key: `h${h.id}`, text: cleanAction(h.text), role: "done" as const })),
-    { key: `h${st.n}`, text: st.cur ? cleanAction(st.cur) : "Starting the browser", role: "now" as const },
+    ...hist.map((text, i) => ({ key: `h${base + i}`, text: cleanAction(text), role: "done" as const })),
+    { key: `h${trace.length - 1}`, text: cur ? cleanAction(cur) : "Starting the browser", role: "now" as const },
     ...(next ? [{ key: `x${next}`, text: next, role: "next" as const }] : []),
   ];
   return (
     <div className="relative mt-4 overflow-hidden border-t border-line pt-1" style={{ height: ROW * 3 + 4, maskImage: FADE, WebkitMaskImage: FADE }} aria-live="polite">
-      <div className="transition-transform duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none" style={{ transform: `translateY(${(1 - st.hist.length) * ROW}px)` }}>
+      <div className="transition-transform duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none" style={{ transform: `translateY(${(1 - hist.length) * ROW}px)` }}>
         {rows.map((r) => (
           <p key={r.key} className={`flex items-center gap-2.5 text-sm transition-opacity duration-300 ${r.role === "now" ? "font-medium" : "text-muted"} ${r.role === "now" ? "opacity-100" : r.role === "done" ? "opacity-60" : "opacity-50"}`} style={{ height: ROW }}>
             <span className="flex h-3 w-3 shrink-0 items-center justify-center" aria-hidden>
               {r.role === "done" ? <span className="text-[10px]">✓</span> : <span className={`h-2.5 w-2.5 rounded-full border-[1.5px] ${r.role === "now" ? "border-foreground" : "border-muted"}`} />}
             </span>
-            <span className={`truncate ${r.role === "now" ? "shimmer" : ""}`} title={r.text}>{r.text}</span>
+            {r.role === "now" ? <Shimmer text={r.text} /> : <span className="truncate" title={r.text}>{r.text}</span>}
           </p>
         ))}
       </div>
@@ -63,7 +69,7 @@ function Feed({ now, steps }: { now: string | null; steps: string[] }) {
 }
 
 /** What the agent is doing, in the test's own steps. Not the agent's raw action log. */
-function ProgressPanel({ group: all }: { group: FeatureGroup | undefined }) {
+function ProgressPanel({ group: all, trace }: { group: FeatureGroup | undefined; trace: Record<string, string[]> }) {
   // A single rerun shares its feature with results that are already in: only the checks being run belong here.
   const group = all && { ...all, cards: all.cards.filter((c) => c.state === "running") };
   const now = group?.cards.map((c) => c.check?.now).find(Boolean) ?? null;
@@ -88,7 +94,7 @@ function ProgressPanel({ group: all }: { group: FeatureGroup | undefined }) {
           </li>
         ))}
       </ol>
-      <Feed key={`${group?.cards[active]?.req.id ?? "none"}`} now={now} steps={group?.cards[active]?.req.steps ?? []} />
+      <Feed key={`${group?.cards[active]?.req.id ?? "none"}`} trace={group?.cards.map((c) => (c.check ? trace[c.check.id] : undefined)).find((t) => t?.length) ?? []} steps={group?.cards[active]?.req.steps ?? []} />
     </section>
   );
 }
@@ -130,7 +136,7 @@ function ReplayPane({ card }: { card: Card }) {
 }
 
 export default function RunView({ trailId }: { trailId: string }) {
-  const { live, job, starting, begin, cards, verdict } = useTrailLive();
+  const { live, job, starting, begin, cards, verdict, trace } = useTrailLive();
   const groups = useMemo(() => groupByFeature(cards), [cards]);
   const [picked, setPicked] = useState<string | null>(null);
   const [mode, setMode] = useState<"auto" | "replay">("auto");
@@ -205,7 +211,7 @@ export default function RunView({ trailId }: { trailId: string }) {
         </div>
 
         <aside className="min-w-0 lg:col-span-2 xl:col-span-1" aria-label={showProgress ? "Progress" : "Result"}>
-          {showProgress ? <ProgressPanel group={progressGroup} /> : sel && (
+          {showProgress ? <ProgressPanel group={progressGroup} trace={trace} /> : sel && (
             <section className="rounded-2xl border border-line bg-background p-4">
               <p className="flex items-start gap-2.5 font-medium"><span className="mt-0.5 shrink-0"><StatusIcon state={sel.state} /></span><span>{shortLabel(sel.req.text, 90)}</span></p>
               {claim && <p className="mt-3 text-sm text-muted">{claim}</p>}

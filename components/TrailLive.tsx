@@ -10,7 +10,7 @@ import { seconds } from "./ui";
 
 export type Job = { running: boolean; exitCode: number | null; log: string[]; problem: string | null } | null;
 
-type Ctx = { live: Live; job: Job; starting: boolean; begin: () => void; cards: Card[]; verdict: Verdict };
+type Ctx = { live: Live; job: Job; starting: boolean; begin: () => void; cards: Card[]; verdict: Verdict; /** The agent's actions so far, per check, oldest first. Kept here so it survives changing requirement or tab. */ trace: Record<string, string[]> };
 const LiveContext = createContext<Ctx | null>(null);
 
 export const useTrailLive = () => {
@@ -24,11 +24,21 @@ export function TrailLiveProvider({ trailId, fresh, regression, initial, childre
   const [live, setLive] = useState(initial);
   const [job, setJob] = useState<Job>(null);
   const [starting, setStarting] = useState(false);
+  const [trace, setTrace] = useState<Record<string, string[]>>({});
   const poll = useCallback(async () => {
     try {
       const d = await (await fetch(`/api/trails/${trailId}/live`, { cache: "no-store" })).json();
       setLive(d.live);
       setJob(d.job);
+      setTrace((prev) => {
+        let next: Record<string, string[]> | null = null;
+        for (const c of d.live.checks as { id: string; now?: string | null }[]) {
+          if (!c.now || prev[c.id]?.at(-1) === c.now) continue;
+          next ??= { ...prev };
+          next[c.id] = [...(prev[c.id] ?? []), c.now].slice(-60);
+        }
+        return next ?? prev;
+      });
     } catch { /* the next poll retries */ }
   }, [trailId]);
   useEffect(() => {
@@ -40,7 +50,7 @@ export function TrailLiveProvider({ trailId, fresh, regression, initial, childre
   const begin = useCallback(() => { setStarting(true); void poll().finally(() => setStarting(false)); }, [poll]);
   const cards = useMemo(() => buildCards(fresh, regression, live), [fresh, regression, live]);
   const verdict = verdictOf(cards, live);
-  return <LiveContext.Provider value={{ live, job, starting, begin, cards, verdict }}>{children}</LiveContext.Provider>;
+  return <LiveContext.Provider value={{ live, job, starting, begin, cards, verdict, trace }}>{children}</LiveContext.Provider>;
 }
 
 const verdictUi: Record<Verdict, { text: string; cls: string; icon: "running" | "passed" | "failed" | "review" | "todo" | "errored" }> = {
