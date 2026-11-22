@@ -47,10 +47,11 @@ export default function Replay({ r, failing, checkId }: { r: ReplayData; failing
   }, [i]);
 
   const f = frames[i];
-  // The cursor's path up to this step: its last few positions, oldest faintest.
-  const raw = r.steps.slice(r.start, r.end + 1);
+    const raw = r.steps.slice(r.start, r.end + 1);
   const upTo = f ? raw.lastIndexOf(f.frames[f.frames.length - 1]) : -1;
-  const path = raw.slice(Math.max(0, upTo - 8), upTo + 1)
+  // Only this step's own movement: from where the cursor was when the step began (the frame before it) to where it ended.
+  const from = f ? raw.indexOf(f.frames[0]) : -1;
+  const path = raw.slice(Math.max(0, from - 1), upTo + 1)
     .map((x) => (x.file ? r.cursors?.[x.file] ?? null : null))
     .filter((p, k, a): p is { x: number; y: number } => !!p && (k === 0 || !a[k - 1] || Math.hypot(p.x - a[k - 1]!.x, p.y - a[k - 1]!.y) > 0.004));
   const gid = useId();
@@ -93,10 +94,10 @@ export default function Replay({ r, failing, checkId }: { r: ReplayData; failing
                     <path className="cursor-trail" d={d} pathLength={1} fill="none" stroke={`url(#${gid}-g)`} strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" />
                   </>
                 )}
-                {clicked && [0, 0.18].map((delay) => (
-                  <circle key={delay} className="radar" cx={end.x * 1280} cy={end.y * 720} r={42} fill="none" stroke="var(--color-accent)" strokeWidth={4}
-                    style={{ animationDelay: `${path.length > 1 ? delay : delay - 1.15}s` }} />
-                ))}
+                {clicked && (
+                  <circle className="radar" cx={end.x * 1280} cy={end.y * 720} r={42} fill="none" stroke="var(--color-accent)" strokeWidth={4}
+                    style={{ animationDelay: path.length > 1 ? undefined : "-1.15s" }} />
+                )}
               </svg>
             )}
             {failing && mark?.box && f.file === mark.file && (
