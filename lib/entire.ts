@@ -31,6 +31,17 @@ export async function addFinding(requirementId: string, title: string, body: str
   return out.id;
 }
 
+/**
+ * The run summary and merge recommendation. A low severity finding sits under the gate threshold, so it informs
+ * and never blocks, and it is the sanctioned channel for agent feedback on a Trail (comments are for people).
+ * The previous summary is resolved so only the latest is open.
+ */
+export async function postSummary(text: string, ref?: TrailRef): Promise<void> {
+  const open = await openFindings(ref);
+  if (open.summary) await resolveFinding(open.summary, "Superseded by a newer run", ref);
+  await entire(["trail", "finding", "add", "-m", `Receipts summary\n\n${text}\n\n${marker("summary")}`, "--severity", "low", ...flags(ref)]);
+}
+
 export const resolveFinding = (id: string, message: string, ref?: TrailRef) =>
   entire(["trail", "finding", "resolve", id, "-m", message, ...flags(ref)]);
 

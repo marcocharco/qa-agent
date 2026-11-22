@@ -4,7 +4,7 @@ import { promisify } from "node:util";
 import { compileRequirement, renderFeatureGoal, type CheckSpec, type StructuredModel } from "./compile";
 import { db } from "./db";
 import {
-  addFinding, mergedTrailNumbers, openFindings, resolveFinding, sessionTranscript, showTrail,
+  addFinding, mergedTrailNumbers, postSummary, openFindings, resolveFinding, sessionTranscript, showTrail,
   trailSessionIds, type TrailInfo, type TrailRef,
 } from "./entire";
 import { extractRequirements, type Source } from "./extract";
@@ -13,6 +13,7 @@ import { runFeature } from "./tinyfish";
 import { parseTranscript } from "./transcript";
 import { toFeatureVerdicts, type Verdict } from "./verdict";
 import { needsSecondRun, reconcile } from "./confirm";
+import { recommend } from "./recommendation";
 import type { CheckRun } from "./tinyfish";
 
 const execGit = promisify(execFile);
@@ -209,6 +210,12 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
       );
       cfg.log?.(`finding ${findingId} filed`);
     }
+    const rec = recommend({
+      total: results.length + review + errored, passed, failed, needsReview: review, errored,
+      failures: results.filter((r) => !r.passed).map((r) => ({ text: r.requirementText, reason: r.reason })),
+    });
+    await postSummary(rec.text, ref);
+    cfg.log?.(`recommendation: ${rec.verdict}`);
   } finally {
     // The run row is always closed out, and an all-errored run shows as errored, not as 0 failures.
     await db().query("update runs set finished_at=now(), passed_count=$2, failed_count=$3, errored_count=$4 where id=$1", [runId, passed, failed, errored]);
