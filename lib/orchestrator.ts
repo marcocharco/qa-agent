@@ -326,7 +326,7 @@ export async function processTrail(cfg: Config, ref: TrailRef, opts: { only?: st
 }
 
 /** Totals of a run as stored, with the failures that hold the merge. */
-async function runTotals(runId: string) {
+export async function runTotals(runId: string) {
   const { rows } = await db().query(
     `select r.text, r.status, c.passed, c.classification, c.reason from checks c join requirements r on r.id = c.requirement_id where c.run_id = $1`, [runId]);
   const passed = rows.filter((r) => r.passed === true).length;
