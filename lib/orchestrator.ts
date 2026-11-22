@@ -162,6 +162,8 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
         const run = await runFeature(renderFeatureGoal(items.map((c) => c.spec)), cfg.targetUrl, items.length, {
           onStreamingUrl: (u) => void db().query("update checks set streaming_url=$2 where id = any($1)", [ids, u]),
         });
+        // The stream is dead once the session ends. Clear it so the live view never embeds a finished browser.
+        await db().query("update checks set streaming_url=null where id = any($1)", [ids]);
         return { run, verdicts: toFeatureVerdicts(run, items.length) };
       };
       const attempt = (run: CheckRun) => ({ runId: run.runId, status: run.status, error: run.error, result: run.result, streamingUrl: run.streamingUrl });

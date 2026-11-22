@@ -8,31 +8,54 @@ import { StatusBadge, ago, seconds } from "./ui";
 
 type Job = { running: boolean; exitCode: number | null; log: string[] } | null;
 
-function Tile({ c, trailId }: { c: CheckRow; trailId: string }) {
-  const live = c.streamingUrl?.startsWith("http");
+/** Checks of one feature share one browser session and one stream, so they share one tile. */
+function groupSessions(checks: CheckRow[]): CheckRow[][] {
+  const groups = new Map<string, CheckRow[]>();
+  for (const c of checks) {
+    const key = c.streamingUrl ?? c.id;
+    groups.set(key, [...(groups.get(key) ?? []), c]);
+  }
+  return [...groups.values()];
+}
+
+function SessionTile({ cs, trailId }: { cs: CheckRow[]; trailId: string }) {
+  const url = cs[0].streamingUrl;
+  const live = url?.startsWith("http");
+  const running = cs.some((c) => c.status === "running");
+  const anyFailed = cs.some((c) => c.status === "failed");
   return (
-    <li className={`flex flex-col overflow-hidden rounded-2xl border bg-background ${c.status === "failed" ? "border-fail/40" : "border-line"}`}>
-      <div className="flex items-start justify-between gap-3 px-4 py-3">
-        <p className="line-clamp-2 text-sm font-medium leading-snug">{c.requirement}</p>
-        <StatusBadge status={c.status} />
+    <li className={`flex flex-col overflow-hidden rounded-2xl border bg-background ${anyFailed ? "border-fail/40" : "border-line"}`}>
+      <div className="flex items-center justify-between gap-3 px-4 py-3 text-xs text-muted">
+        <span>One browser session, {cs.length} {cs.length === 1 ? "check" : "checks"}</span>
+        {live && <a className="font-medium text-accent hover:underline" href={url!} target="_blank" rel="noreferrer">Watch live ↗</a>}
       </div>
-      {c.status === "running" ? (
-        live ? (
-          <iframe src={c.streamingUrl!} title={c.requirement} className="aspect-video w-full border-t border-line bg-panel" />
+      {running &&
+        (live ? (
+          <iframe src={url!} title="Live browser" allow="clipboard-read; clipboard-write" className="aspect-video w-full border-y border-line bg-panel" />
         ) : (
-          <div className="flex aspect-video items-center justify-center border-t border-line bg-panel text-sm text-muted">
-            {c.streamingUrl ? "Live browser (sample)" : "Starting browser..."}
+          <div className="flex aspect-video items-center justify-center border-y border-line bg-panel text-sm text-muted">
+            {url ? "Live browser (sample)" : "Starting browser..."}
           </div>
-        )
-      ) : (
-        <div className="flex flex-1 flex-col justify-between gap-3 border-t border-line bg-panel px-4 py-4">
-          <p className="text-sm leading-relaxed text-muted">{c.reason ?? "No details."}</p>
-          <div className="flex items-center justify-between text-xs text-muted">
-            <span>{seconds(c.durationMs)}</span>
-            {c.status === "failed" && <Link className="font-medium text-accent hover:underline" href={`/t/${trailId}/checks/${c.id}`}>Bug report →</Link>}
-          </div>
-        </div>
-      )}
+        ))}
+      <ul className="divide-y divide-line">
+        {cs.map((c) => (
+          <li key={c.id} className="flex flex-col gap-2 px-4 py-3">
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-sm font-medium leading-snug">{c.requirement}</p>
+              <StatusBadge status={c.status} />
+            </div>
+            {c.status !== "running" && (
+              <>
+                <p className="text-sm leading-relaxed text-muted">{c.reason ?? "No details."}</p>
+                <div className="flex items-center justify-between text-xs text-muted">
+                  <span>{seconds(c.durationMs)}</span>
+                  {c.status === "failed" && <Link className="font-medium text-accent hover:underline" href={`/t/${trailId}/checks/${c.id}`}>Bug report →</Link>}
+                </div>
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
     </li>
   );
 }
@@ -108,8 +131,8 @@ export default function LiveGrid({ trailId, initial }: { trailId: string; initia
       )}
 
       {checks.length > 0 && (
-        <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {checks.map((c) => <Tile key={c.id} c={c} trailId={trailId} />)}
+        <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+          {groupSessions(checks).map((cs) => <SessionTile key={cs[0].streamingUrl ?? cs[0].id} cs={cs} trailId={trailId} />)}
         </ul>
       )}
     </>
