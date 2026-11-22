@@ -11,7 +11,9 @@ import { extractRequirements, type Source } from "./extract";
 import { decideFindings, type CheckResult } from "./findings";
 import { runFeature } from "./tinyfish";
 import { parseTranscript } from "./transcript";
-import { toFeatureVerdicts } from "./verdict";
+import { toFeatureVerdicts, type Verdict } from "./verdict";
+import { needsSecondRun, reconcile } from "./confirm";
+import type { CheckRun } from "./tinyfish";
 
 const execGit = promisify(execFile);
 
@@ -100,7 +102,7 @@ const headSha = async (cfg: Config, branch: string) =>
   (await execGit("git", ["ls-remote", "origin", branch], { cwd: cfg.repoDir })).stdout.split("\t")[0] || (() => { throw new Error(`branch ${branch} not found on origin`); })();
 
 /** One Trail push: sync merged Trails and this Trail, run every requirement in parallel, file findings. */
-export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId: string; passed: number; failed: number; errored: number }> {
+export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId: string; passed: number; failed: number; errored: number; needsReview: number }> {
   for (const n of await mergedTrailNumbers(cfg.project)) {
     if (n === ref.trail) continue;
     try {
@@ -118,6 +120,7 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
 
   const results: (CheckResult & { checkId: string })[] = [];
   let errored = 0;
+  let review = 0; // flaky or unconfirmed: shown to a human, never a finding
   // One browser session per feature, its requirements as sequential checks. No feature means a session of one.
   const groups = new Map<string, Pending[]>();
   for (const r of reqs) {
@@ -147,26 +150,40 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
       for (const c of compiled) {
         await db().query("insert into checks (id,run_id,requirement_id,goal) values ($1,$2,$3,$4)", [c.checkId, runId, c.r.id, goal]);
       }
-      const ids = compiled.map((c) => c.checkId);
       const t = Date.now();
-      cfg.log?.(`session "${label}": ${compiled.length} checks`);
-      const run = await runFeature(goal, cfg.targetUrl, compiled.length, {
-        onStreamingUrl: (u) => void db().query("update checks set streaming_url=$2 where id = any($1)", [ids, u]),
-      });
-      const verdicts = toFeatureVerdicts(run, compiled.length);
+      // One session for the feature. Anything that did not pass gets exactly one more session of its own, so a
+      // single misread or a dropped check never files a bug: a bug needs two agreeing failures.
+      const session = async (items: typeof compiled, tag: string) => {
+        cfg.log?.(`session "${label}"${tag}: ${items.length} checks`);
+        const ids = items.map((c) => c.checkId);
+        const run = await runFeature(renderFeatureGoal(items.map((c) => c.spec)), cfg.targetUrl, items.length, {
+          onStreamingUrl: (u) => void db().query("update checks set streaming_url=$2 where id = any($1)", [ids, u]),
+        });
+        return { run, verdicts: toFeatureVerdicts(run, items.length) };
+      };
+      const attempt = (run: CheckRun) => ({ runId: run.runId, status: run.status, error: run.error, result: run.result, streamingUrl: run.streamingUrl });
+      const first = await session(compiled, "");
+      const retry = compiled.filter((_, i) => needsSecondRun(first.verdicts[i]));
+      const second = retry.length ? await session(retry, " (confirming)") : null;
       for (const [i, c] of compiled.entries()) {
-        const v = verdicts[i];
+        const j = retry.indexOf(c);
+        const v2: Verdict | null = second && j >= 0 ? second.verdicts[j] : null;
+        const final = reconcile(first.verdicts[i], v2);
+        const last = v2 ? second!.run : first.run;
         await db().query(
-          "update checks set tinyfish_run_id=$2, passed=$3, failed_step=$4, reason=$5, streaming_url=coalesce($6,streaming_url), duration_ms=$7 where id=$1",
-          [c.checkId, run.runId, v.state === "errored" ? null : v.state === "passed", v.failedStep, v.reason, run.streamingUrl, Date.now() - t],
+          `update checks set tinyfish_run_id=$2, passed=$3, failed_step=$4, reason=$5, streaming_url=coalesce($6,streaming_url),
+             duration_ms=$7, classification=$8, attempts=$9, raw_result=$10 where id=$1`,
+          [c.checkId, last.runId, final.state === "passed" ? true : final.state === "failed" ? false : null, final.failedStep, final.reason,
+           last.streamingUrl, Date.now() - t, final.classification, v2 ? 2 : 1, JSON.stringify(v2 ? [attempt(first.run), attempt(second!.run)] : [attempt(first.run)])],
         );
-        // The session's actions are shared by its checks, so each check keeps the whole list.
-        for (const [j, purpose] of run.steps.entries()) {
-          await db().query("insert into steps (check_id,index,purpose) values ($1,$2,$3)", [c.checkId, j + 1, purpose]);
+        // The session's actions are shared by its checks, so each check keeps the whole list of its last session.
+        for (const [k, purpose] of last.steps.entries()) {
+          await db().query("insert into steps (check_id,index,purpose) values ($1,$2,$3)", [c.checkId, k + 1, purpose]);
         }
-        cfg.log?.(`${v.state.toUpperCase()} ${c.r.text}`);
-        if (v.state === "errored") errored++;
-        else results.push({ checkId: c.checkId, requirementId: c.r.id, requirementText: c.r.text, passed: v.state === "passed", failedStep: v.failedStep, reason: v.reason });
+        cfg.log?.(`${final.state.toUpperCase()}${final.classification ? ` (${final.classification})` : ""} ${c.r.text}`);
+        if (final.state === "errored") errored++;
+        else if (final.state === "needs_review") review++;
+        else results.push({ checkId: c.checkId, requirementId: c.r.id, requirementText: c.r.text, passed: final.state === "passed", failedStep: final.failedStep, reason: final.reason });
       }
     } catch (e) {
       errored += compiled.length;
@@ -196,7 +213,7 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
   }
   // Marked done only now, so a run that threw is picked up again on the next event.
   await db().query("update trails set last_head_sha=$2 where id=$1", [trail.id, sha]);
-  return { runId, passed, failed, errored };
+  return { runId, passed, failed, errored, needsReview: review };
 }
 
 /** Skip pushes we already ran, so our own findings (which also emit Trail events) never loop. */

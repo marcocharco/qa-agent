@@ -81,3 +81,9 @@ alter table runs add column if not exists errored_count int not null default 0;
 
 -- One browser session per feature: requirements that share a feature run as sequential checks in it.
 alter table requirements add column if not exists feature text;
+
+-- Trust: every attempt's raw agent output is kept, failures are confirmed by a second run, and each check is classified.
+alter table checks add column if not exists raw_result jsonb;
+alter table checks add column if not exists attempts int not null default 1;
+alter table checks add column if not exists classification text
+  check (classification in ('bug','flaky','environment','test_problem'));

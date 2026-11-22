@@ -23,6 +23,7 @@ describe("toVerdict", () => {
       state: "errored",
       failedStep: null,
       reason: "The agent returned no valid verdict",
+      cause: "test_problem",
     });
   });
 
@@ -35,6 +36,7 @@ describe("toVerdict", () => {
       state: "errored",
       failedStep: null,
       reason: "Run FAILED: Site could not be reached",
+      cause: "environment",
     });
   });
 

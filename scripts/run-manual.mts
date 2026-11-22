@@ -2,7 +2,7 @@
 // Runs the real orchestrator (TinyFish, Postgres, findings) with hand-written requirements and goals,
 // so the browser side can be tested without Gemini. Extraction returns nothing, compiling is scripted.
 import { closeDb, db } from "../lib/db";
-import { COMPILER_PROMPT, renderGoal, type CheckSpec, type StructuredModel } from "../lib/compile";
+import { COMPILER_PROMPT, type CheckSpec, type StructuredModel } from "../lib/compile";
 import { processTrail, syncTrail, type Config } from "../lib/orchestrator";
 
 type Manual = { trail: string; feature: string; text: string; type: "behaviour" | "validation"; spec: CheckSpec };

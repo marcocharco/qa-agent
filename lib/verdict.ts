@@ -11,7 +11,7 @@ export type Verdict =
   | { state: "passed"; failedStep: null; reason: string }
   | { state: "failed"; failedStep: number | null; reason: string }
   /** The run produced no trustworthy verdict. Never a pass, never a bug finding. */
-  | { state: "errored"; failedStep: null; reason: string };
+  | { state: "errored"; failedStep: null; reason: string; cause: "environment" | "test_problem" };
 
 const agentVerdict = z.object({
   passed: z.boolean(),
@@ -22,11 +22,11 @@ const agentVerdict = z.object({
 /** The agent's own verdict decides pass or fail, never the run status. */
 export function toVerdict(o: RunnerOutcome): Verdict {
   if (o.status !== "COMPLETED") {
-    return { state: "errored", failedStep: null, reason: `Run ${o.status}: ${o.error ?? "no details"}` };
+    return { state: "errored", failedStep: null, reason: `Run ${o.status}: ${o.error ?? "no details"}`, cause: "environment" };
   }
   const parsed = agentVerdict.safeParse(o.result);
   if (!parsed.success) {
-    return { state: "errored", failedStep: null, reason: "The agent returned no valid verdict" };
+    return { state: "errored", failedStep: null, reason: "The agent returned no valid verdict", cause: "test_problem" };
   }
   const v = parsed.data;
   return v.passed
@@ -49,8 +49,8 @@ const featureOutput = z.object({
 
 /** One verdict per check (1-based) from a single browser session that ran `count` checks in order. */
 export function toFeatureVerdicts(o: RunnerOutcome, count: number): Verdict[] {
-  const errored = (reason: string): Verdict => ({ state: "errored", failedStep: null, reason });
-  if (o.status !== "COMPLETED") return Array.from({ length: count }, () => errored(`Run ${o.status}: ${o.error ?? "no details"}`));
+  const errored = (reason: string, cause: "environment" | "test_problem" = "test_problem"): Verdict => ({ state: "errored", failedStep: null, reason, cause });
+  if (o.status !== "COMPLETED") return Array.from({ length: count }, () => errored(`Run ${o.status}: ${o.error ?? "no details"}`, "environment"));
   const parsed = featureOutput.safeParse(o.result);
   if (!parsed.success) return Array.from({ length: count }, () => errored("The agent returned no valid verdict"));
   return Array.from({ length: count }, (_, i) => {
