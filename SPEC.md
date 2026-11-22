@@ -100,6 +100,23 @@ A company's on-call is paged after an error is logged. An agent drafts a fix PR 
 - **Eval (required, scheduled later):** TinyFish vs a Claude browser agent (Agent SDK plus Chrome DevTools MCP) on the same requirements, on buggy and control builds, N=5 runs. Metrics: detection rate, false positives, consistency, time, cost, failing-step accuracy. Browser backends sit behind a `Runner` interface.
 - TinyFish beta enrollment: done. Also request a higher concurrency limit.
 
+## Differentiation and trust (Nov 21, after comparing with TestSprite)
+
+TestSprite (testsprite.com) writes and maintains tests from a brief, PRDs or tickets, and keeps them "current as the interface changes". Receipts differs in where the requirements come from: nobody briefs anything, they are mined from what the team already told its agents, and they are anchored to that intent, not to the UI. A regression therefore stays a regression instead of being healed into the new normal. The moat is the **automatic** part: no one writes tests, and drift is handled by the system.
+
+Added to scope, in priority order:
+
+1. **Trustworthy verdicts.** One browser session per feature, with the feature's requirements as sequential checks (done). A pass must quote what the agent saw (done). Store the raw agent output for every run. A check the agent skipped or did not report is retried once in its own session. A failure is confirmed by a second run before a finding is filed; if the two runs disagree the check is shown as "needs review" and files nothing. Each failure is classified as a real bug, a test problem (the agent could not do the steps) or an environment problem (site down, timeout).
+2. **Drift.** When a new chat message contradicts or changes an approved requirement, Receipts proposes superseding it and shows the old and new wording side by side with both receipts. Never silent. Extraction gets a "changes requirement X" output. This is the headline "auto" beat of the demo.
+3. **Prompt attribution** (`entire why`, levels 4 and 5 of the bug report).
+4. **Trail comment** with a merge recommendation ("does the change match the intent?").
+5. **Nightly regression run** of all merged Trails against a target URL, with a morning summary.
+6. **Coverage view:** which stated asks have no test and which are untestable, per Trail.
+
+Skipped on purpose: backend and API tests, Jira, Linear and Slack integrations, a standalone CLI, IDE MCP. Copy as Markdown, "Copy for Claude Code" and Brain recall cover those roles.
+
+Findings from the first live runs on the demo Trail (Nov 21): the agent echoed the expected values from the goal and passed a real bug (fixed by requiring quoted observations), misread a page value once, and silently dropped checks in a multi-check session. These are the reasons for item 1.
+
 ## Prize alignment
 
 - **Entire:** uses Trails (trigger, gate, merge recommendation), Sessions (requirement source), Brain (write on approve, recall in the prevention beat), Graph (token-savings measurement) and `why`. Receipts itself is built on Entire, with a Trail per feature and sessions captured.
