@@ -129,6 +129,21 @@ say("## 6. Brain: approved requirements are memories, anchored to the code they 
 // 7. Findings and the gate
 say("## 7. Findings and the merge gate live in Entire", "", "```", `$ entire trail finding list ${trail} --project ${project}`, "```", "", "```", (await sh("entire", ["trail", "finding", "list", trail, "--project", project])).slice(0, 2500), "```", "", "```", `$ entire trail merge ${trail} --dry-run`, (await sh("entire", ["trail", "merge", trail, "--project", project, "--dry-run"])).slice(0, 800), "```", "");
 
+// 8. Detection, from the runs stored so far
+const planted: [string, string][] = [["A", "SAVE10 works on Team in annual mode%"], ["B", "Team gets 5% off the subtotal at 10%"], ["C", "Team needs at least 3 seats%"], ["D", "Annual comes first%"]];
+say("## 8. Detection of the planted bugs, from every stored run", "");
+const nruns = Number((await db().query("select count(*) from runs where finished_at is not null")).rows[0].count);
+if (!nruns) say("No finished runs stored yet. Run the Trail, then re-run this script.", "");
+else {
+  say("| Bug | Runs that tested it | Confirmed as a bug | Flagged for review | Missed (false pass) |", "|---|---|---|---|---|");
+  for (const [bug, like] of planted) {
+    const r = (await db().query(`select count(*) n, count(*) filter (where c.passed = false) bug, count(*) filter (where c.classification = 'flaky') flaky, count(*) filter (where c.passed = true) missed from checks c join requirements r on r.id = c.requirement_id where r.text like $1 and (c.passed is not null or c.classification is not null)`, [like])).rows[0];
+    say(`| ${bug} | ${r.n} | ${r.bug} | ${r.flaky} | ${r.missed} |`);
+  }
+  const fp = (await db().query(`select count(*) filter (where c.passed = false) bad, count(*) n from checks c join requirements r on r.id = c.requirement_id where not (r.text like any ($1))`, [planted.map(([, l]) => l)])).rows[0];
+  say("", `Requirements that are not planted bugs: ${fp.n} checks, ${fp.bad} confirmed as failures (false positives).`, "");
+}
+
 await writeFile("docs/ENTIRE-PROOF.md", out.join("\n") + "\n");
 console.log("\nwritten to docs/ENTIRE-PROOF.md");
 await closeDb();

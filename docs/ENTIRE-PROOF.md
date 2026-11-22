@@ -1,6 +1,6 @@
 # Entire proof
 
-Generated 2026-11-22T07:52:24.889Z by `scripts/entire-proof.mts`. Everything below is read live from the Entire CLI in the demo repo (`/Users/marco/Developer/acme-pricing-demo`), then checked against what ArcherFish stored. Re-run any command yourself in that folder.
+Generated 2026-11-22T07:52:46.263Z by `scripts/entire-proof.mts`. Everything below is read live from the Entire CLI in the demo repo (`/Users/marco/Developer/acme-pricing-demo`), then checked against what ArcherFish stored. Re-run any command yourself in that folder.
 
 ## 1. Entire is installed and wired to the repo
 
@@ -122,4 +122,8 @@ Change acme-pricing-demo/2 of trail #4 (feat/annual-volume → main)
   Checks:    1 passed · 0 running · 0 failed (1 total)
 Change acme-pricing-demo/2 of trail #4 is mergeable (dry run; no merge performed).
 ```
+
+## 8. Detection of the planted bugs, from every stored run
+
+No finished runs stored yet. Run the Trail, then re-run this script.
 
