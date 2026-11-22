@@ -48,38 +48,31 @@ function StartingPanel({ job }: { job: Job }) {
   );
 }
 
-const ROW = 32;
-const FADE = "linear-gradient(to bottom, transparent, black 30%, black 70%, transparent)";
-
 /**
- * The test's steps as a roller: the step being tested sits in the highlighted middle row, what is done scrolls up and fades,
- * what is next waits below. It moves one row when the agent moves on. Under it, the agent's own latest action in small type.
+ * What the agent just finished, what it is doing, and what comes next. The agent's action changes every few seconds;
+ * each row eases between roles as the list moves up. "Next" is the test's next step, since the agent does not announce it.
  */
 function Feed({ now, steps }: { now: string | null; steps: string[] }) {
-  const [st, setSt] = useState({ cur: now, idx: 0, n: 0 });
-  if (now && now !== st.cur) setSt({ cur: now, idx: currentStep(now, steps, st.idx), n: st.n + 1 });
-  const idx = Math.min(st.idx, Math.max(0, steps.length - 1));
+  const [st, setSt] = useState({ cur: now, prev: null as string | null, idx: 0, n: 0 });
+  if (now !== st.cur && now) {
+    setSt({ cur: now, prev: st.cur, idx: currentStep(now, steps, st.idx), n: st.n + 1 });
+  }
+  const next = steps[st.idx + 1] ?? (st.idx + 1 === steps.length ? "Read the result" : null);
+  const rows = [
+    st.prev && { key: `p${st.n}`, text: cleanAction(st.prev), role: "done" as const },
+    { key: `c${st.n}`, text: st.cur ? cleanAction(st.cur) : "Starting the browser", role: "now" as const },
+    next && { key: `n${st.n}`, text: next, role: "next" as const },
+  ].filter(Boolean) as { key: string; text: string; role: "done" | "now" | "next" }[];
   return (
-    <div className="mt-4">
-      {steps.length > 0 && (
-        <div className="relative h-24 overflow-hidden" style={{ maskImage: FADE, WebkitMaskImage: FADE }} role="list" aria-label="Steps of this test">
-          <div className="absolute inset-x-0 rounded-lg bg-chip" style={{ top: ROW, height: ROW }} aria-hidden />
-          <span className="absolute left-0 w-0.5 rounded-full bg-accent" style={{ top: ROW + 8, height: ROW - 16 }} aria-hidden />
-          <div className="absolute inset-x-0 top-0 transition-transform duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none" style={{ transform: `translateY(${(1 - idx) * ROW}px)` }}>
-            {steps.map((step, i) => (
-              <p key={i} role="listitem" aria-current={i === idx ? "step" : undefined}
-                className={`flex items-center gap-2.5 px-3 text-sm transition-[opacity,color] duration-300 ${i === idx ? "font-medium text-foreground" : "text-muted"}`}
-                style={{ height: ROW, opacity: i === idx ? 1 : Math.abs(i - idx) === 1 ? 0.75 : 0.3 }}>
-                <span className="w-4 shrink-0 text-right font-mono text-xs">{i + 1}</span>
-                <span className="truncate" title={step}>{step}</span>
-              </p>
-            ))}
-          </div>
-        </div>
-      )}
-      <p key={st.n} className="now-in mt-2 truncate px-3 text-xs text-muted" aria-live="polite" title={st.cur ?? undefined}>
-        {st.cur ? cleanAction(st.cur) : "Starting the browser"}
-      </p>
+    <div className="mt-4 space-y-1.5 border-t border-line pt-3" aria-live="polite">
+      {rows.map((r) => (
+        <p key={r.key} className={`now-in flex items-start gap-2.5 text-sm transition-opacity duration-300 ${r.role === "now" ? "font-medium" : "text-muted opacity-50"}`}>
+          <span className="mt-1.5 flex h-3 w-3 shrink-0 items-center justify-center" aria-hidden>
+            {r.role === "now" ? <span className="think"><span /><span /><span /></span> : r.role === "done" ? <span className="text-[10px]">✓</span> : <span className="h-2 w-2 rounded-full border border-muted" />}
+          </span>
+          <span className="min-w-0 break-words">{r.text}</span>
+        </p>
+      ))}
     </div>
   );
 }
@@ -89,25 +82,28 @@ function ProgressPanel({ group: all }: { group: FeatureGroup | undefined }) {
   // A single rerun shares its feature with results that are already in: only the checks being run belong here.
   const group = all && { ...all, cards: all.cards.filter((c) => c.state === "running") };
   const now = group?.cards.map((c) => c.check?.now).find(Boolean) ?? null;
-  // The agent says which check it is on ("CHECK 2 step 3"). Before that, it is on the first.
+    // The agent says which check it is on ("CHECK 2 step 3"). Before that, it is on the first.
   const active = Math.max(0, Math.min((group?.cards.length ?? 1) - 1, Number(/check (\d+)/i.exec(now ?? "")?.[1] ?? 1) - 1));
-  const card = group?.cards[active];
   return (
     <section className="rounded-2xl border border-line bg-background p-4" role="status">
       <h2 className="text-sm font-semibold">Progress</h2>
       {group && <p className="mt-0.5 text-xs text-muted">{titleCase(group.feature)} · check {active + 1} of {group.cards.length}</p>}
-      {card && <p className="mt-4 text-sm font-medium">{shortLabel(card.req.text, 90)}</p>}
-      {group && group.cards.length > 1 && (
-        <ol className="mt-2 space-y-1 text-xs text-muted">
-          {group.cards.map((c, i) => (
-            <li key={c.req.id} className={`flex gap-2 ${i === active ? "font-medium text-foreground" : i < active ? "line-through opacity-60" : "opacity-60"}`}>
-              <span className="w-3 shrink-0 text-right font-mono">{i + 1}</span><span className="truncate">{shortLabel(c.req.text, 50)}</span>
-            </li>
-          ))}
-        </ol>
-      )}
-      <Feed key={card?.req.id ?? "none"} now={now} steps={card?.req.steps ?? []} />
-      {!group && <p className="mt-4 text-sm text-muted">Reading the Trail and opening the first browser. The steps of each test appear here as it starts.</p>}
+      <ol className="mt-4 space-y-3">
+        {group?.cards.map((c, i) => (
+          <li key={c.req.id} className={i > active ? "opacity-50" : ""}>
+            <p className="flex items-start gap-2 text-sm font-medium">
+              <span className="mt-0.5 shrink-0">{i < active ? <span className="flex h-4 w-4 items-center justify-center rounded-full bg-chip text-[10px] text-muted">✓</span> : i === active ? <span className="flex h-4 w-4 items-center justify-center" aria-label="In progress"><span className="live-dot" /></span> : <StatusIcon state="todo" size={15} />}</span>
+              <span>{shortLabel(c.req.text, 70)}</span>
+            </p>
+            {i === active && !!c.req.steps?.length && (
+              <ol className="ml-6 mt-1.5 space-y-1 text-sm text-muted">
+                {c.req.steps.map((st, k) => <li key={k} className="flex gap-2"><span className="w-4 shrink-0 text-right font-mono text-xs leading-5">{k + 1}</span><span>{st}</span></li>)}
+              </ol>
+            )}
+          </li>
+        ))}
+      </ol>
+      <Feed key={`${group?.cards[active]?.req.id ?? "none"}`} now={now} steps={group?.cards[active]?.req.steps ?? []} />
     </section>
   );
 }
