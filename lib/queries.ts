@@ -173,11 +173,13 @@ export type CheckDetail = {
   status: CheckStatus; reason: string | null; failedStep: number | null; goal: string;
   steps: string[]; replay: ReplayData | null; findingId: string | null; streamingUrl: string | null;
   file: string | null; line: number | null; checkpointId: string | null; promptSessionId: string | null; promptMessageId: string | null; cause: string | null; promptText: string | null;
+  /** The test's own steps, written as what a person would do. These are the steps to reproduce. */
+  specSteps: string[];
 };
 
 export async function getCheck(id: string): Promise<CheckDetail | undefined> {
   const c = (await db().query(
-    `select c.id, c.goal, c.passed, c.reason, c.classification, c.failed_step, c.streaming_url, c.video_path, c.session_pos, r.id as req_id, r.text, r.quote, t.id as trail_id, t.title, u.head_sha, u.finished_at
+    `select c.id, c.goal, c.passed, c.reason, c.classification, c.failed_step, c.streaming_url, c.video_path, c.session_pos, r.id as req_id, r.text, r.quote, t.id as trail_id, t.title, u.head_sha, u.finished_at, r.compiled
      from checks c join requirements r on r.id = c.requirement_id join runs u on u.id = c.run_id join trails t on t.id = u.trail_id where c.id = $1`, [id])).rows[0];
   if (!c) return;
   const steps = await db().query("select purpose, action, screenshot_path, duration_s from steps where check_id = $1 order by index", [id]);
@@ -196,6 +198,7 @@ export async function getCheck(id: string): Promise<CheckDetail | undefined> {
     file: b?.file ?? null, line: b?.line ?? null, checkpointId: b?.checkpoint_id ?? null,
     promptSessionId: b?.prompt_session_id ?? null, promptMessageId: b?.prompt_message_id ?? null,
     cause: b?.cause ?? null, promptText: b?.prompt_text ?? null,
+    specSteps: Array.isArray(c.compiled?.spec?.steps) ? (c.compiled.spec.steps as string[]) : [],
   };
 }
 

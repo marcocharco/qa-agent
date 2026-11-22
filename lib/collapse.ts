@@ -47,5 +47,12 @@ export function collapseSteps(all: Frame[]): Group[] {
   // A reload or navigation after the last read belongs to whatever the agent did next, not to this check.
   const lastLook = groups.map((g) => g.look).lastIndexOf(true);
   const kept = lastLook >= 0 ? groups.filter((g, i) => i <= lastLook || !SETUP.test(cleanAction(g.frames[0].action))) : groups;
-  return kept.filter((g, i) => !g.look || i === kept.length - 1).map((g) => (g.look ? { ...g, label: "Read the result" } : g));
+  // Reloads and navigation are the agent resetting its page, not steps. Only the first one stays, as "Open the page".
+  const setup = (g: (typeof kept)[number]) => SETUP.test(cleanAction(g.frames[0].action));
+  const first = kept.findIndex(setup);
+  const steps = kept.filter((g, i) => !setup(g) || i === first);
+  // Looks in the middle are dropped; the last one is the evidence frame.
+  return steps
+    .filter((g, i) => !g.look || i === steps.length - 1)
+    .map((g, i) => (g.look ? { ...g, label: "Read the result" } : setup(g) && i === 0 ? { ...g, label: "Open the page" } : g));
 }

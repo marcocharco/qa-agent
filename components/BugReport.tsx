@@ -20,9 +20,10 @@ export default function BugReport({ check, findingOpen }: { check: CheckDetail; 
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // With a recording, show the logical steps (repeated clicks and page reads collapsed), the last one being where it broke.
-  const steps = c.replay ? collapseSteps(c.replay.steps.slice(c.replay.start, c.replay.end + 1)).map((g) => g.label) : c.steps;
-  const failedStep = c.replay ? (c.status === "failed" ? steps.length : null) : c.failedStep;
+  // Steps to reproduce are the test's own steps, what a person would do. The agent's action log (looking at the page,
+  // reloading, checking) is not reproducible detail. The failing step is the one the agent named, else the last.
+  const steps = c.specSteps.length ? c.specSteps : c.replay ? collapseSteps(c.replay.steps.slice(c.replay.start, c.replay.end + 1)).map((g) => g.label) : c.steps;
+  const failedStep = c.status === "failed" || c.status === "errored" ? (c.failedStep && c.failedStep <= steps.length ? c.failedStep : steps.length) : null;
   const data: ReportData = {
     requirement: c.requirement, trailTitle: c.trailTitle, commit: c.commit, verdict: c.status === "errored" ? "errored" : "failed",
     reason: c.reason ?? "No details.", failedStep, steps, quote: c.quote,

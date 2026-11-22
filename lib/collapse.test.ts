@@ -25,7 +25,10 @@ describe("collapseSteps", () => {
   it("drops a reload that trails the last read", () => {
     expect(collapseSteps(fr("Select Team plan", "Check final state", "Reload page fresh")).map((g) => g.label)).toEqual(["Select Team plan", "Read the result"]);
   });
+  it("keeps only the first reload or navigation", () => {
+    expect(collapseSteps(fr("Navigate to the page", "Select Team plan", "Reload page fresh", "Set seats to 10", "Check final state")).map((g) => g.label)).toEqual(["Open the page", "Select Team plan", "Set seats to 10", "Read the result"]);
+  });
   it("keeps different actions apart and strips check bookkeeping", () => {
-    expect(collapseSteps(fr("Reload page for CHECK 2 fresh state", "Select Team plan for Check 2")).map((g) => g.label)).toEqual(["Reload page fresh state", "Select Team plan"]);
+    expect(collapseSteps(fr("Reload page for CHECK 2 fresh state", "Select Team plan for Check 2")).map((g) => g.label)).toEqual(["Open the page", "Select Team plan"]);
   });
 });
