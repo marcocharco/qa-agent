@@ -37,7 +37,7 @@ function Feed({ now, steps }: { now: string | null; steps: string[] }) {
   if (now && now !== st.cur) {
     setSt({
       cur: now, n: st.n + 1, idx: currentStep(now, steps, st.idx),
-      hist: st.cur ? [...st.hist, { id: st.n, text: st.cur }].slice(-4) : st.hist,
+      hist: st.cur ? [...st.hist, { id: st.n, text: st.cur }].slice(-40) : st.hist,
     });
   }
   const next = steps[st.idx + 1] ?? (st.idx + 1 === steps.length ? "Read the result" : null);
