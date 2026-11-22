@@ -15,7 +15,7 @@ const banner: Record<Verdict, { text: string; cls: string; icon: "passed" | "fai
   broken: { text: "The last run could not test anything", cls: "bg-chip text-muted", icon: "errored" },
 };
 
-const heading = "text-sm font-medium uppercase tracking-wide text-muted";
+const heading = "text-sm font-semibold text-muted";
 
 /** One shareable page that replaces the PR description: why it was built, what changed, and proof it works. */
 export default async function Report({ params }: { params: Promise<{ trailId: string }> }) {

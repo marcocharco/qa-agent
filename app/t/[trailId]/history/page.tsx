@@ -10,7 +10,7 @@ function PassRateChart({ runs }: { runs: HistoryRow[] }) {
   if (done.length < 2) return null;
   return (
     <div className="mb-8 rounded-2xl border border-line p-6">
-      <h2 className="text-sm font-medium uppercase tracking-wide text-muted">Pass rate per run</h2>
+      <h2 className="text-sm font-semibold text-muted">Pass rate per run</h2>
       <div className="mt-4 flex h-28 items-end gap-2" role="img" aria-label="Pass rate per run, oldest to newest">
         {done.map((r) => (
           <div key={r.id} className="flex h-full max-w-12 flex-1 flex-col justify-end" title={`${r.headSha.slice(0, 7)}: ${Math.round(rate(r) * 100)}% passed`}>

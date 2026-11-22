@@ -31,7 +31,7 @@ export default function ReceiptChip({ requirementId, kind }: { requirementId: st
           {data?.note && <p className="text-sm text-muted">{data.note}</p>}
           {data?.messages.map((m) => (
             <div key={m.id} className={`rounded-xl px-4 py-3 text-sm ${m.highlight ? "border border-accent bg-accent/5" : "bg-panel text-muted"}`}>
-              <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted">{m.role === "user" ? "You" : "Agent"}</div>
+              <div className="mb-1 text-xs font-semibold text-muted">{m.role === "user" ? "You" : "Agent"}</div>
               <p className="whitespace-pre-wrap">{m.text.length > 700 ? m.text.slice(0, 700) + "..." : m.text}</p>
             </div>
           ))}

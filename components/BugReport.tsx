@@ -89,7 +89,7 @@ export default function BugReport({ check, findingOpen }: { check: CheckDetail; 
       {level >= 2 && (
         <section className="mt-6 grid gap-6 md:grid-cols-[1.2fr_1fr]">
           <div className="rounded-2xl border border-line p-6">
-            <h3 className="text-sm font-medium uppercase tracking-wide text-muted">Steps to reproduce</h3>
+            <h3 className="text-sm font-semibold text-muted">Steps to reproduce</h3>
             {steps.length ? (
               <ol className="mt-4 space-y-2">
                 {steps.map((s, i) => {
@@ -108,16 +108,16 @@ export default function BugReport({ check, findingOpen }: { check: CheckDetail; 
           </div>
           <div className="space-y-4">
             <div className="rounded-2xl border border-line p-6">
-              <h3 className="text-sm font-medium uppercase tracking-wide text-muted">Expected</h3>
+              <h3 className="text-sm font-semibold text-muted">Expected</h3>
               <p className="mt-2 text-[15px] leading-relaxed">{c.requirement}</p>
             </div>
             <div className="rounded-2xl border border-fail/40 p-6">
-              <h3 className="text-sm font-medium uppercase tracking-wide text-fail">Actual</h3>
+              <h3 className="text-sm font-semibold text-fail">Actual</h3>
               <p className="mt-2 text-[15px] leading-relaxed">{c.reason}</p>
             </div>
             {c.quote && (
               <div className="rounded-2xl border border-line p-6">
-                <h3 className="text-sm font-medium uppercase tracking-wide text-muted">Asked in chat</h3>
+                <h3 className="text-sm font-semibold text-muted">Asked in chat</h3>
                 <p className="mt-2 border-l-2 border-accent pl-3 text-sm italic text-muted">&ldquo;{c.quote}&rdquo;</p>
               </div>
             )}
@@ -127,20 +127,20 @@ export default function BugReport({ check, findingOpen }: { check: CheckDetail; 
 
       {level >= 3 && c.file && (
         <section className="mt-6 rounded-2xl border border-line p-6">
-          <h3 className="text-sm font-medium uppercase tracking-wide text-muted">Likely code</h3>
+          <h3 className="text-sm font-semibold text-muted">Likely code</h3>
           <p className="mt-2 font-mono text-sm">{c.file}{c.line ? `:${c.line}` : ""}</p>
           {c.cause && <p className="mt-2 text-sm text-muted">{c.cause}</p>}
         </section>
       )}
       {level >= 4 && has[4] && (
         <section className="mt-6 rounded-2xl border border-line p-6">
-          <h3 className="text-sm font-medium uppercase tracking-wide text-muted">History</h3>
+          <h3 className="text-sm font-semibold text-muted">History</h3>
           <p className="mt-2 text-sm">Commit <span className="font-mono">{c.commit.slice(0, 7)}</span>, checkpoint <span className="font-mono">{c.checkpointId}</span></p>
         </section>
       )}
       {level >= 5 && c.promptSessionId && (
         <section className="mt-6 rounded-2xl border border-line p-6">
-          <h3 className="text-sm font-medium uppercase tracking-wide text-muted">Prompt that introduced it</h3>
+          <h3 className="text-sm font-semibold text-muted">Prompt that introduced it</h3>
           {c.promptText && <blockquote className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap border-l-2 border-accent pl-3 text-sm italic">{c.promptText}</blockquote>}
           <p className="mt-3 text-xs text-muted">Session <span className="font-mono">{c.promptSessionId}</span>, message <span className="font-mono">{c.promptMessageId ?? "unknown"}</span></p>
         </section>
