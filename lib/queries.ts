@@ -2,6 +2,8 @@
 import { randomUUID } from "node:crypto";
 import { db } from "./db";
 import { checkStatus, type CheckStatus } from "./report";
+import { segmentSteps } from "./replay";
+import type { ReplayData } from "@/components/Replay";
 
 export type TrailRow = { id: string; title: string; description: string; branch: string; state: "open" | "merged"; requirements: number; lastRunAt: string | null };
 
@@ -155,21 +157,27 @@ export type CheckDetail = {
   id: string; trailId: string; trailTitle: string; commit: string;
   requirementId: string; requirement: string; quote: string | null;
   status: CheckStatus; reason: string | null; failedStep: number | null; goal: string;
-  steps: string[]; findingId: string | null; streamingUrl: string | null;
+  steps: string[]; replay: ReplayData | null; findingId: string | null; streamingUrl: string | null;
   file: string | null; line: number | null; checkpointId: string | null; promptSessionId: string | null; promptMessageId: string | null;
 };
 
 export async function getCheck(id: string): Promise<CheckDetail | undefined> {
   const c = (await db().query(
-    `select c.id, c.goal, c.passed, c.reason, c.classification, c.failed_step, c.streaming_url, r.id as req_id, r.text, r.quote, t.id as trail_id, t.title, u.head_sha, u.finished_at
+    `select c.id, c.goal, c.passed, c.reason, c.classification, c.failed_step, c.streaming_url, c.video_path, c.session_pos, r.id as req_id, r.text, r.quote, t.id as trail_id, t.title, u.head_sha, u.finished_at
      from checks c join requirements r on r.id = c.requirement_id join runs u on u.id = c.run_id join trails t on t.id = u.trail_id where c.id = $1`, [id])).rows[0];
   if (!c) return;
-  const steps = await db().query("select purpose from steps where check_id = $1 order by index", [id]);
+  const steps = await db().query("select purpose, action, screenshot_path, duration_s from steps where check_id = $1 order by index", [id]);
+  const rows = steps.rows as { purpose: string | null; action: string | null; screenshot_path: string | null; duration_s: number | null }[];
+  const hasReplay = rows.some((s) => s.screenshot_path);
+  // A session runs several checks. Show only this check's own steps when the agent labelled them.
+  const seg = segmentSteps(rows.map((s) => s.action ?? s.purpose ?? ""), c.session_pos ?? 1);
   const b = (await db().query("select finding_id, file, line, commit_sha, checkpoint_id, prompt_session_id, prompt_message_id from bug_reports where check_id = $1 limit 1", [id])).rows[0];
   return {
     id: c.id, trailId: c.trail_id, trailTitle: c.title, commit: b?.commit_sha ?? c.head_sha, requirementId: c.req_id, requirement: c.text, quote: c.quote,
     status: checkStatus(c, !!c.finished_at), reason: c.reason, failedStep: c.failed_step, goal: c.goal,
-    steps: steps.rows.map((s) => s.purpose ?? ""), findingId: b?.finding_id ?? null, streamingUrl: c.streaming_url,
+    steps: rows.slice(hasReplay ? seg.start : 0, hasReplay ? seg.end + 1 : undefined).map((s) => s.action ?? s.purpose ?? ""),
+    replay: hasReplay ? { steps: rows.map((s) => ({ action: s.action ?? s.purpose ?? "", durationS: s.duration_s, file: s.screenshot_path })), video: c.video_path, start: seg.start, end: seg.end } : null,
+    findingId: b?.finding_id ?? null, streamingUrl: c.streaming_url,
     file: b?.file ?? null, line: b?.line ?? null, checkpointId: b?.checkpoint_id ?? null,
     promptSessionId: b?.prompt_session_id ?? null, promptMessageId: b?.prompt_message_id ?? null,
   };

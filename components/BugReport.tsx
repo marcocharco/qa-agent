@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { claudeCodeSummary, reportMarkdown, type ReportData } from "@/lib/report";
 import type { CheckDetail } from "@/lib/queries";
+import Replay from "./Replay";
 import { btn, btnGhost, chip } from "./ui";
 
 type Level = 1 | 2 | 3 | 4 | 5;
@@ -79,6 +80,8 @@ export default function BugReport({ check, findingOpen }: { check: CheckDetail; 
         <p className="mt-3 text-[15px] leading-relaxed text-muted">{c.reason}</p>
       </section>
 
+      {level >= 2 && c.replay && <div className="mt-6"><Replay r={c.replay} failing={c.status === "failed"} /></div>}
+
       {level >= 2 && (
         <section className="mt-6 grid gap-6 md:grid-cols-[1.2fr_1fr]">
           <div className="rounded-2xl border border-line p-6">
@@ -86,7 +89,7 @@ export default function BugReport({ check, findingOpen }: { check: CheckDetail; 
             {c.steps.length ? (
               <ol className="mt-4 space-y-2">
                 {c.steps.map((s, i) => {
-                  const bad = c.failedStep === i + 1;
+                  const bad = c.replay ? c.status === "failed" && i === c.steps.length - 1 : c.failedStep === i + 1;
                   return (
                     <li key={i} className={`flex gap-3 rounded-lg px-3 py-2 text-[15px] ${bad ? "bg-fail/10 text-fail" : ""}`}>
                       <span className={`w-5 shrink-0 text-right font-mono text-sm ${bad ? "" : "text-muted"}`}>{i + 1}</span>

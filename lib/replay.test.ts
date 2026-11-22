@@ -8,10 +8,14 @@ const actions = [
 
 describe("segmentSteps", () => {
   it("returns the steps of one check", () => {
-    expect(segmentSteps(actions, 1)).toEqual({ start: 1, end: 3 });
+    expect(segmentSteps(actions, 1)).toEqual({ start: 0, end: 3 });
   });
   it("ends the last check at the final step", () => {
-    expect(segmentSteps(actions, 2)).toEqual({ start: 5, end: 6 });
+    expect(segmentSteps(actions, 2)).toEqual({ start: 4, end: 6 });
+  });
+  it("takes the last block when the agent redoes a check after another one", () => {
+    const redo = ["go", "a Check 1", "b Check 1", "reload", "c Check 2", "go again", "d Check 1", "e Check 1"];
+    expect(segmentSteps(redo, 1)).toEqual({ start: 5, end: 7 });
   });
   it("falls back to the whole session when the agent did not label its steps", () => {
     expect(segmentSteps(["a", "b", "c"], 1)).toEqual({ start: 0, end: 2 });

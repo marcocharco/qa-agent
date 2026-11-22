@@ -32,7 +32,7 @@ export async function saveReplay(runId: string): Promise<Replay> {
   await mkdir(dir, { recursive: true });
 
   const steps = run.steps ?? [];
-  const out: ReplayStep[] = steps.map((s, i) => ({
+  const out: ReplayStep[] = steps.map((s) => ({
     id: s.id,
     at: s.timestamp,
     action: s.action,
@@ -74,8 +74,11 @@ export async function saveReplay(runId: string): Promise<Replay> {
  */
 export function segmentSteps(actions: string[], pos: number): { start: number; end: number } {
   const n = actions.map((a) => Number(/check\s*(\d+)/i.exec(a)?.[1] ?? 0));
-  const start = n.findIndex((x) => x === pos);
-  if (start < 0) return { start: 0, end: Math.max(0, actions.length - 1) };
-  // The last step that names this check. Unlabeled steps after it (a reload before the next check) are not ours.
-  return { start, end: n.lastIndexOf(pos) };
+  const end = n.lastIndexOf(pos);
+  if (end < 0) return { start: 0, end: Math.max(0, actions.length - 1) };
+  // The agent sometimes redoes a check after another one. Take the last contiguous block, walking back over this
+  // check's labeled steps and the unlabeled ones between them, and stop at a step labeled for another check.
+  let start = end;
+  while (start > 0 && (n[start - 1] === pos || n[start - 1] === 0)) start--;
+  return { start, end };
 }
