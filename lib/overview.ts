@@ -7,7 +7,7 @@ export type Card = { req: RequirementRow; regression: boolean; check: CheckRow |
 
 export function buildCards(fresh: RequirementRow[], regression: RequirementRow[], live: Live): Card[] {
   const byReq = new Map(live.checks.map((c) => [c.requirementId, c]));
-  const mine = fresh.filter((r) => r.testable && (r.status === "proposed" || r.status === "approved"));
+  const mine = fresh.filter((r) => r.testable && (r.status === "approved" || (r.status === "proposed" && !r.supersedes)));
   return [...mine.map((r) => ({ r, regression: false })), ...regression.map((r) => ({ r, regression: true }))].map(({ r, regression: reg }) => {
     const check = byReq.get(r.id) ?? null;
     return { req: r, regression: reg, check, state: check ? check.status : r.status === "proposed" ? "proposed" : "todo" };

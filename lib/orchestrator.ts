@@ -58,7 +58,8 @@ async function buildSources(cfg: Config, trail: TrailInfo, ref: TrailRef): Promi
   ];
   for (const sid of await trailSessionIds(ref)) {
     try {
-      const messages = parseTranscript(await sessionTranscript(sid, cfg.repoDir));
+      // Only the developer's words become requirements, so the assistant's long replies are trimmed. That keeps the prompt small enough for Gemini to answer in time.
+      const messages = parseTranscript(await sessionTranscript(sid, cfg.repoDir)).map((m) => (m.role === "assistant" ? { ...m, text: m.text.slice(0, 400) } : m));
       if (messages.length) sources.push({ kind: "session", id: sid, messages });
     } catch (e) {
       cfg.log?.(`session ${sid} unreadable, skipped: ${String(e).slice(0, 120)}`);
@@ -104,10 +105,10 @@ export async function syncTrail(cfg: Config, ref: TrailRef): Promise<TrailInfo> 
 type Pending = { id: string; text: string; kind: "new" | "regression"; feature: string | null };
 
 async function selectRequirements(trailId: string): Promise<Pending[]> {
-  // New: this Trail's live asks (proposed or approved). Regression: approved asks of merged Trails.
+  // New: this Trail's live asks (proposed or approved). A proposed change to an earlier requirement (drift) is a question for a human, not a test: it waits for approval. Regression: approved asks of merged Trails.
   const { rows } = await db().query(
     `select id, text, feature, trail_id = $1 as is_new from requirements
-     where testable and (
+     where testable and not (status = 'proposed' and supersedes_id is not null) and (
        (trail_id = $1 and status in ('proposed','approved'))
        or (trail_id <> $1 and status = 'approved' and trail_id in (select id from trails where state = 'merged')))
      order by trail_id = $1 desc, feature nulls last, text`,

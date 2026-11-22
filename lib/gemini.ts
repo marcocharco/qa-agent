@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 import type { StructuredModel } from "./compile";
 
-const TRANSIENT = /\b(503|504|429|UNAVAILABLE|DEADLINE_EXCEEDED|timed? ?out)\b/i;
+const TRANSIENT = /\b(503|504|429|UNAVAILABLE|DEADLINE_EXCEEDED|timed? ?out|ECONNRESET|fetch failed|AbortError|aborted)\b/i;
 const QUOTA = /\b(429|RESOURCE_EXHAUSTED)\b/;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -19,17 +19,20 @@ export function geminiModel(
     for (const model of models) {
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
-          const res = await ai.models.generateContent({
+          // Streamed so a slow answer keeps the connection busy: one long idle wait was being reset mid-response.
+          const stream = await ai.models.generateContentStream({
             model,
             contents: prompt,
             config: {
               responseMimeType: "application/json",
               responseJsonSchema: z.toJSONSchema(schema),
               temperature: 0,
-              httpOptions: { timeout: 60_000 },
+              httpOptions: { timeout: 240_000 },
             },
           });
-          return JSON.parse(res.text ?? "null");
+          let text = "";
+          for await (const chunk of stream) text += chunk.text ?? "";
+          return JSON.parse(text || "null");
         } catch (e) {
           last = e;
           if (!TRANSIENT.test(String(e))) throw e;
