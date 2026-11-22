@@ -171,7 +171,7 @@ export type CheckDetail = {
   requirementId: string; requirement: string; quote: string | null;
   status: CheckStatus; reason: string | null; failedStep: number | null; goal: string;
   steps: string[]; replay: ReplayData | null; findingId: string | null; streamingUrl: string | null;
-  file: string | null; line: number | null; checkpointId: string | null; promptSessionId: string | null; promptMessageId: string | null;
+  file: string | null; line: number | null; checkpointId: string | null; promptSessionId: string | null; promptMessageId: string | null; cause: string | null; promptText: string | null;
 };
 
 export async function getCheck(id: string): Promise<CheckDetail | undefined> {
@@ -184,7 +184,7 @@ export async function getCheck(id: string): Promise<CheckDetail | undefined> {
   const hasReplay = rows.some((s) => s.screenshot_path);
   // A session runs several checks. Show only this check's own steps when the agent labelled them.
   const seg = segmentSteps(rows.map((s) => s.action ?? s.purpose ?? ""), c.session_pos ?? 1);
-  const b = (await db().query("select finding_id, file, line, commit_sha, checkpoint_id, prompt_session_id, prompt_message_id from bug_reports where check_id = $1 limit 1", [id])).rows[0];
+  const b = (await db().query("select finding_id, file, line, cause, commit_sha, checkpoint_id, prompt_session_id, prompt_message_id, prompt_text from bug_reports where check_id = $1 limit 1", [id])).rows[0];
   return {
     id: c.id, trailId: c.trail_id, trailTitle: c.title, commit: b?.commit_sha ?? c.head_sha, requirementId: c.req_id, requirement: c.text, quote: c.quote,
     status: checkStatus(c, !!c.finished_at), reason: c.reason, failedStep: c.failed_step, goal: c.goal,
@@ -193,6 +193,7 @@ export async function getCheck(id: string): Promise<CheckDetail | undefined> {
     findingId: b?.finding_id ?? null, streamingUrl: c.streaming_url,
     file: b?.file ?? null, line: b?.line ?? null, checkpointId: b?.checkpoint_id ?? null,
     promptSessionId: b?.prompt_session_id ?? null, promptMessageId: b?.prompt_message_id ?? null,
+    cause: b?.cause ?? null, promptText: b?.prompt_text ?? null,
   };
 }
 

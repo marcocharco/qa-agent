@@ -129,6 +129,7 @@ export default function BugReport({ check, findingOpen }: { check: CheckDetail; 
         <section className="mt-6 rounded-2xl border border-line p-6">
           <h3 className="text-sm font-medium uppercase tracking-wide text-muted">Likely code</h3>
           <p className="mt-2 font-mono text-sm">{c.file}{c.line ? `:${c.line}` : ""}</p>
+          {c.cause && <p className="mt-2 text-sm text-muted">{c.cause}</p>}
         </section>
       )}
       {level >= 4 && has[4] && (
@@ -140,7 +141,8 @@ export default function BugReport({ check, findingOpen }: { check: CheckDetail; 
       {level >= 5 && c.promptSessionId && (
         <section className="mt-6 rounded-2xl border border-line p-6">
           <h3 className="text-sm font-medium uppercase tracking-wide text-muted">Prompt that introduced it</h3>
-          <p className="mt-2 text-sm">Session <span className="font-mono">{c.promptSessionId}</span>, message <span className="font-mono">{c.promptMessageId ?? "unknown"}</span></p>
+          {c.promptText && <blockquote className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap border-l-2 border-accent pl-3 text-sm italic">{c.promptText}</blockquote>}
+          <p className="mt-3 text-xs text-muted">Session <span className="font-mono">{c.promptSessionId}</span>, message <span className="font-mono">{c.promptMessageId ?? "unknown"}</span></p>
         </section>
       )}
 

@@ -11,6 +11,7 @@ import { extractRequirements, type Source } from "./extract";
 import { decideFindings, type CheckResult } from "./findings";
 import { runFeature } from "./tinyfish";
 import { parseTranscript } from "./transcript";
+import { triageCheck } from "./triage";
 import { gaveNoVerdict, toFeatureVerdicts, type Verdict } from "./verdict";
 import { needsSecondRun, reconcile } from "./confirm";
 import { recommend } from "./recommendation";
@@ -257,6 +258,8 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
         [randomUUID(), checkId, findingId, `**${a.title}**\n\n${a.body}`],
       );
       cfg.log?.(`finding ${findingId} filed`);
+      // Likely line and the prompt behind it. Never blocks or fails the run.
+      await triageCheck(checkId, cfg).catch((e) => cfg.log?.(`triage skipped: ${String(e).slice(0, 120)}`));
     }
     const rec = recommend({
       total: results.length + review + errored, passed, failed, needsReview: review, errored,

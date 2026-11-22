@@ -102,3 +102,7 @@ alter table requirements add column if not exists compiled_key text;
 
 -- Where on the evidence screenshot the wrong value shows, found once by a vision model: {file, box:[ymin,xmin,ymax,xmax] (0-1000), label}.
 alter table checks add column if not exists highlight jsonb;
+
+-- Root cause: the line a model picked as the likely cause, why, and the prompt text that wrote it.
+alter table bug_reports add column if not exists cause text;
+alter table bug_reports add column if not exists prompt_text text;
