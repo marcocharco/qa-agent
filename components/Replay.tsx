@@ -3,7 +3,8 @@
 // Local replay screenshots are plain files served by our own route, next/image adds nothing here.
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { collapseSteps } from "@/lib/collapse";
 
 export type ReplayData = {
   steps: { action: string; durationS: number | null; file: string | null }[];
@@ -17,7 +18,8 @@ const src = (file: string) => `/api/replay/${file}`;
 
 /** What the agent did, one frame per step, opening on the moment it went wrong. */
 export default function Replay({ r, failing }: { r: ReplayData; failing: boolean }) {
-  const frames = r.steps.slice(r.start, r.end + 1);
+  // Logical steps only: repeated clicks and back-to-back page reads collapse into one.
+  const frames = useMemo(() => collapseSteps(r.steps.slice(r.start, r.end + 1)), [r]);
   const last = Math.max(0, frames.length - 1);
   const [i, setI] = useState(failing ? last : 0);
   const [mode, setMode] = useState<"steps" | "video">("steps");
@@ -54,12 +56,12 @@ export default function Replay({ r, failing }: { r: ReplayData; failing: boolean
         <>
           <div className="relative mt-3 aspect-video w-full overflow-hidden bg-panel">
             {f.file ? (
-              <img src={src(f.file)} alt={f.action} className="h-full w-full object-contain" />
+              <img src={src(f.file)} alt={f.label} className="h-full w-full object-contain" />
             ) : <div className="flex h-full items-center justify-center text-sm text-muted">No screenshot for this step</div>}
             {failing && i === last && <span className="absolute left-3 top-3 rounded-full bg-fail px-2.5 py-1 text-xs font-medium text-white">Where it went wrong</span>}
           </div>
           <div className="flex items-center justify-between gap-3 px-5 py-3">
-            <p className="min-w-0 text-sm"><span className="text-muted">Step {i + 1} of {frames.length} · </span>{f.action}{f.durationS != null && <span className="text-muted"> · {f.durationS}s</span>}</p>
+            <p className="min-w-0 text-sm"><span className="text-muted">Step {i + 1} of {frames.length} · </span>{f.label}{f.frames.length > 1 && <span className="text-muted"> · {f.frames.length} actions</span>}{f.durationS != null && <span className="text-muted"> · {f.durationS}s</span>}</p>
             <div className="flex shrink-0 items-center gap-1.5">
               <button className="rounded-full border border-line px-3 py-1 text-sm hover:bg-chip disabled:opacity-40" disabled={i === 0} onClick={() => go(i - 1)} aria-label="Previous step">←</button>
               <button className="rounded-full bg-foreground px-4 py-1 text-sm font-medium text-background" onClick={() => { if (!playing && i >= last) setI(0); setPlaying((p) => !p); }}>{playing ? "Pause" : "Play"}</button>
@@ -68,9 +70,10 @@ export default function Replay({ r, failing }: { r: ReplayData; failing: boolean
           </div>
           <div ref={strip} className="flex gap-2 overflow-x-auto border-t border-line px-5 py-3">
             {frames.map((fr, k) => (
-              <button key={k} onClick={() => go(k)} aria-label={`Step ${k + 1}: ${fr.action}`}
+              <button key={k} onClick={() => go(k)} aria-label={`Step ${k + 1}: ${fr.label}`}
                 className={`relative h-14 w-24 shrink-0 overflow-hidden rounded-lg border bg-panel ${k === i ? "border-foreground" : "border-line opacity-70 hover:opacity-100"}`}>
                 {fr.file && <img src={src(fr.file)} alt="" className="h-full w-full object-cover" />}
+                {fr.frames.length > 1 && <span className="absolute bottom-1 left-1 rounded-full bg-foreground/80 px-1.5 text-[10px] font-medium text-background">×{fr.frames.length}</span>}
                 {failing && k === last && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-fail" />}
               </button>
             ))}

@@ -1,5 +1,6 @@
 "use client";
 
+import { collapseSteps } from "@/lib/collapse";
 import { useState } from "react";
 import { claudeCodeSummary, reportMarkdown, type ReportData } from "@/lib/report";
 import type { CheckDetail } from "@/lib/queries";
@@ -18,9 +19,12 @@ export default function BugReport({ check, findingOpen }: { check: CheckDetail; 
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // With a recording, show the logical steps (repeated clicks and page reads collapsed), the last one being where it broke.
+  const steps = c.replay ? collapseSteps(c.replay.steps.slice(c.replay.start, c.replay.end + 1)).map((g) => g.label) : c.steps;
+  const failedStep = c.replay ? (c.status === "failed" ? steps.length : null) : c.failedStep;
   const data: ReportData = {
     requirement: c.requirement, trailTitle: c.trailTitle, commit: c.commit, verdict: c.status === "errored" ? "errored" : "failed",
-    reason: c.reason ?? "No details.", failedStep: c.failedStep, steps: c.steps, quote: c.quote,
+    reason: c.reason ?? "No details.", failedStep, steps, quote: c.quote,
   };
 
   async function copy(label: string, text: string) {
@@ -86,10 +90,10 @@ export default function BugReport({ check, findingOpen }: { check: CheckDetail; 
         <section className="mt-6 grid gap-6 md:grid-cols-[1.2fr_1fr]">
           <div className="rounded-2xl border border-line p-6">
             <h3 className="text-sm font-medium uppercase tracking-wide text-muted">Steps to reproduce</h3>
-            {c.steps.length ? (
+            {steps.length ? (
               <ol className="mt-4 space-y-2">
-                {c.steps.map((s, i) => {
-                  const bad = c.replay ? c.status === "failed" && i === c.steps.length - 1 : c.failedStep === i + 1;
+                {steps.map((s, i) => {
+                  const bad = failedStep === i + 1;
                   return (
                     <li key={i} className={`flex gap-3 rounded-lg px-3 py-2 text-[15px] ${bad ? "bg-fail/10 text-fail" : ""}`}>
                       <span className={`w-5 shrink-0 text-right font-mono text-sm ${bad ? "" : "text-muted"}`}>{i + 1}</span>
