@@ -95,3 +95,7 @@ alter table requirements add column if not exists supersedes_id text references 
 alter table steps add column if not exists duration_s real;
 alter table steps add column if not exists at timestamptz;
 alter table checks add column if not exists session_pos int;
+
+-- Compiled browser goal per requirement, reused until the requirement text or the compile prompt changes.
+alter table requirements add column if not exists compiled jsonb;
+alter table requirements add column if not exists compiled_key text;

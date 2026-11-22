@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { compileRequirement, renderFeatureGoal, type CheckSpec, type StructuredModel } from "./compile";
+import { COMPILER_PROMPT, compileRequirement, renderFeatureGoal, type CheckSpec, type CompileResult, type StructuredModel } from "./compile";
 import { db } from "./db";
 import {
   addFinding, mergedTrailNumbers, postSummary, openFindings, resolveFinding, sessionTranscript, showTrail,
@@ -27,6 +27,20 @@ export type Config = {
   model: StructuredModel;
   log?: (msg: string) => void;
 };
+
+/** Compile once per requirement text and prompt version. Gemini is slow and metered, a repeat run should not pay again. */
+export async function compileCached(r: { id: string; text: string }, cfg: Config): Promise<CompileResult> {
+  const key = createHash("sha256").update(COMPILER_PROMPT + r.text).digest("hex");
+  const hit = (await db().query("select compiled, compiled_key from requirements where id = $1", [r.id])).rows[0];
+  if (hit?.compiled && hit.compiled_key === key) {
+    cfg.log?.(`compiled (cached): ${r.text.slice(0, 60)}`);
+    return hit.compiled as CompileResult;
+  }
+  const c = await compileRequirement(r, cfg.model);
+  await db().query("update requirements set compiled = $2, compiled_key = $3 where id = $1", [r.id, JSON.stringify(c), key]);
+  cfg.log?.(`compiled: ${r.text.slice(0, 60)}`);
+  return c;
+}
 
 /** Run at most `limit` tasks at once. A throwing task never stops the others. */
 async function pool<T>(limit: number, items: T[], task: (item: T) => Promise<void>) {
@@ -133,18 +147,19 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
   }
   await pool(cfg.concurrency, [...groups.values()], async (group) => {
     const compiled: { r: Pending; spec: CheckSpec; goal: string; checkId: string }[] = [];
-    for (const r of group) {
-      try {
-        const c = await compileRequirement(r, cfg.model);
-        if (!c.testable) {
-          await db().query("update requirements set testable=false, untestable_reason=$2 where id=$1", [r.id, c.reason]);
-          cfg.log?.(`SKIP ${r.text}: ${c.reason}`);
-          continue;
-        }
-        compiled.push({ r, spec: c.spec, goal: c.goal, checkId: randomUUID() });
-      } catch (e) {
+    // A feature's requirements compile at the same time: each call is slow, so waiting on them one by one delays the browser.
+    const outcomes = await Promise.all(group.map(async (r) => {
+      try { return { r, c: await compileCached(r, cfg) }; } catch (e) { return { r, e }; }
+    }));
+    for (const x of outcomes) {
+      if ("e" in x) {
         errored++;
-        cfg.log?.(`ERRORED ${r.text}: ${String(e).slice(0, 160)}`);
+        cfg.log?.(`ERRORED ${x.r.text}: ${String(x.e).slice(0, 160)}`);
+      } else if (!x.c.testable) {
+        await db().query("update requirements set testable=false, untestable_reason=$2 where id=$1", [x.r.id, x.c.reason]);
+        cfg.log?.(`SKIP ${x.r.text}: ${x.c.reason}`);
+      } else {
+        compiled.push({ r: x.r, spec: x.c.spec, goal: x.c.goal, checkId: randomUUID() });
       }
     }
     if (!compiled.length) return;
