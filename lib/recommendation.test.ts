@@ -13,4 +13,9 @@ describe("recommend", () => {
   it("asks for review, not a hold, when results are only flaky or missing", () => {
     expect(recommend({ ...base, passed: 6, needsReview: 1, errored: 1 }).verdict).toBe("review");
   });
+  it("only approved requirements hold the merge, unreviewed failures ask for a review", () => {
+    const r = recommend({ ...base, passed: 7, failed: 1, failures: [{ text: "Unreviewed ask", reason: "x", blocking: false }] });
+    expect(r.verdict).toBe("review");
+    expect(r.text).toContain("Approve them");
+  });
 });

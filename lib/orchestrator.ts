@@ -210,12 +210,14 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
   const passed = results.filter((r) => r.passed).length;
   const failed = results.length - passed;
   try {
+    // Approved requirements block the merge when they fail. Unreviewed ones only inform until a human approves.
+    const status = new Map<string, string>((await db().query("select id, status from requirements where id = any($1)", [results.map((r) => r.requirementId)])).rows.map((r) => [r.id, r.status]));
     for (const a of decideFindings(await openFindings(ref), results)) {
       if (a.kind === "resolve") {
         await resolveFinding(a.findingId, a.message, ref);
         continue;
       }
-      const findingId = await addFinding(a.requirementId, a.title, a.body, ref);
+      const findingId = await addFinding(a.requirementId, a.title, a.body, ref, status.get(a.requirementId) === "approved" ? "high" : "low");
       const checkId = results.find((x) => x.requirementId === a.requirementId)!.checkId;
       await db().query(
         "insert into bug_reports (id,check_id,finding_id,summary_md) values ($1,$2,$3,$4)",
@@ -225,7 +227,7 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
     }
     const rec = recommend({
       total: results.length + review + errored, passed, failed, needsReview: review, errored,
-      failures: results.filter((r) => !r.passed).map((r) => ({ text: r.requirementText, reason: r.reason })),
+      failures: results.filter((r) => !r.passed).map((r) => ({ text: r.requirementText, reason: r.reason, blocking: status.get(r.requirementId) === "approved" })),
     });
     await postSummary(rec.text, ref);
     cfg.log?.(`recommendation: ${rec.verdict}`);

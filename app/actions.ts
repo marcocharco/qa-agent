@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { forgetRequirement, rememberRequirement } from "@/lib/brain";
+import { syncFindingSeverity } from "@/lib/gate";
 import { addManualRequirement, editRequirement, requirementStatus, setRequirementStatus, supersededBy, type RequirementRow, type Status } from "@/lib/queries";
 
 const refresh = () => revalidatePath("/t/[trailId]", "layout");
@@ -19,6 +20,10 @@ async function sync(id: string, approved: boolean): Promise<string | null> {
 export async function setStatus(id: string, status: Status): Promise<string | null> {
   await setRequirementStatus(id, status);
   let warning = await sync(id, status === "approved");
+  // The merge gate follows approval: an approved requirement's failure blocks, an unreviewed one's does not.
+  if (status === "approved" || status === "rejected" || status === "proposed") {
+    try { await syncFindingSeverity(id, status === "approved"); } catch (e) { warning = warning ?? `Saved, but the merge gate was not updated: ${String(e).slice(0, 100)}`; }
+  }
   // Drift is only applied here, by a human: approving a change retires the requirement it replaces.
   const old = status === "approved" ? await supersededBy(id) : null;
   if (old) {

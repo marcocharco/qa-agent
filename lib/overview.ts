@@ -20,7 +20,7 @@ export function summarize(cards: Card[]) {
   return {
     total: cards.length, ran: cards.filter((c) => c.check).length,
     passed: n("passed"), failed: failed.length, review: n("review"), errored: n("errored"), running: n("running"), todo: n("todo") + n("proposed"),
-    failures: failed.map((c) => ({ text: c.req.text, reason: c.check?.reason ?? "" })),
+    failures: failed.map((c) => ({ text: c.req.text, reason: c.check?.reason ?? "", blocking: c.req.status === "approved" })),
   };
 }
 

@@ -24,12 +24,18 @@ export async function openFindings(ref?: TrailRef): Promise<OpenFindings> {
   return open;
 }
 
-/** Failures are filed as high severity so the Agent Review gate blocks the merge. */
-export async function addFinding(requirementId: string, title: string, body: string, ref?: TrailRef): Promise<string> {
+/**
+ * A failure of an approved requirement is high severity, so the Agent Review gate blocks the merge. A failure of an
+ * unreviewed requirement is low: it informs and blocks nothing until a human approves it (then setSeverity promotes it).
+ */
+export async function addFinding(requirementId: string, title: string, body: string, ref?: TrailRef, severity: "high" | "low" = "high"): Promise<string> {
   const text = `${title}\n\n${body}\n\n${marker(requirementId)}`;
-  const out = JSON.parse(await entire(["trail", "finding", "add", "-m", text, "--severity", "high", "--json", ...flags(ref)]));
+  const out = JSON.parse(await entire(["trail", "finding", "add", "-m", text, "--severity", severity, "--json", ...flags(ref)]));
   return out.id;
 }
+
+export const setSeverity = (findingId: string, severity: "high" | "low", ref?: TrailRef) =>
+  entire(["trail", "finding", "update", findingId, "--severity", severity, ...flags(ref)]);
 
 /**
  * The run summary and merge recommendation. A low severity finding sits under the gate threshold, so it informs
