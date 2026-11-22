@@ -1,14 +1,14 @@
-# Receipts — Product Spec
+# AnchorFish — Product Spec
 
 Nov 21, 2026 · @Marco Chen
 
 ## Summary
 
-**Your agent chats are your test suite.** Receipts reads what a team told its coding agents (Entire Trails and session transcripts), turns it into plain-English requirements, tests them on the live app with parallel TinyFish browser agents, and returns bug reports with visual replays and the exact prompt that introduced each bug.
+**Your agent chats are your test suite.** AnchorFish reads what a team told its coding agents (Entire Trails and session transcripts), turns it into plain-English requirements, tests them on the live app with parallel TinyFish browser agents, and returns bug reports with visual replays and the exact prompt that introduced each bug.
 
 **Problem.** Teams building with coding agents state requirements in chat ("cart should survive a refresh") and never write them down. That intent is lost when the session ends, so regressions ship unnoticed.
 
-**Solution.** On every push to an Entire Trail, Receipts extracts requirements from the Trail and its sessions, lets a human approve or edit them, runs them as strict browser tests against a preview, and blocks the merge with an Entire finding when one fails.
+**Solution.** On every push to an Entire Trail, AnchorFish extracts requirements from the Trail and its sessions, lets a human approve or edit them, runs them as strict browser tests against a preview, and blocks the merge with an Entire finding when one fails.
 
 **Prize targets (in order):** TinyFish "Hire Your First AI Employee" · MLH Best Use of Gemini API · MLH Best Use of Entire · Organizers' Choice: Most Adventurous.
 
@@ -78,13 +78,13 @@ Agreed in Q&A on Nov 21. Rows marked *assumed* were not answered and can be chan
 | Storage | Local Postgres (Homebrew postgresql@17). Tiger Data dropped Nov 21. |
 | Re-push behaviour | *Assumed:* keep approved and edited requirements, mine only new messages, flag superseded ones |
 | Frontend | *Assumed:* Next.js + Tailwind + shadcn/ui in one repo |
-| Name | *Assumed:* Receipts |
+| Name | *Assumed:* AnchorFish |
 | Pitch | "Your agent chats are your test suite" |
 | Stretch, in order | Gemini root cause (file/line), Playwright repro export, exploratory mode |
 
 ## Long-term use case: incident response
 
-A company's on-call is paged after an error is logged. An agent drafts a fix PR (a Trail). Receipts runs on that Trail automatically, so the on-call engineer opens the PR and sees an eval already done: which requirements pass, which fail, replays, and the prompt behind each failure. They no longer test the fix by hand. This is why Trail mode is triggered by any push, human or agent, and why the review and override flow is non-blocking by design. Not built for the hackathon, but the pitch and Trail mode must not preclude it.
+A company's on-call is paged after an error is logged. An agent drafts a fix PR (a Trail). AnchorFish runs on that Trail automatically, so the on-call engineer opens the PR and sees an eval already done: which requirements pass, which fail, replays, and the prompt behind each failure. They no longer test the fix by hand. This is why Trail mode is triggered by any push, human or agent, and why the review and override flow is non-blocking by design. Not built for the hackathon, but the pitch and Trail mode must not preclude it.
 
 ## Decisions added in grilling (Nov 21)
 
@@ -102,12 +102,12 @@ A company's on-call is paged after an error is logged. An agent drafts a fix PR 
 
 ## Differentiation and trust (Nov 21, after comparing with TestSprite)
 
-TestSprite (testsprite.com) writes and maintains tests from a brief, PRDs or tickets, and keeps them "current as the interface changes". Receipts differs in where the requirements come from: nobody briefs anything, they are mined from what the team already told its agents, and they are anchored to that intent, not to the UI. A regression therefore stays a regression instead of being healed into the new normal. The moat is the **automatic** part: no one writes tests, and drift is handled by the system.
+TestSprite (testsprite.com) writes and maintains tests from a brief, PRDs or tickets, and keeps them "current as the interface changes". AnchorFish differs in where the requirements come from: nobody briefs anything, they are mined from what the team already told its agents, and they are anchored to that intent, not to the UI. A regression therefore stays a regression instead of being healed into the new normal. The moat is the **automatic** part: no one writes tests, and drift is handled by the system.
 
 Added to scope, in priority order:
 
 1. **Trustworthy verdicts.** One browser session per feature, with the feature's requirements as sequential checks (done). A pass must quote what the agent saw (done). Store the raw agent output for every run. A check the agent skipped or did not report is retried once in its own session. A failure is confirmed by a second run before a finding is filed; if the two runs disagree the check is shown as "needs review" and files nothing. Each failure is classified as a real bug, a test problem (the agent could not do the steps) or an environment problem (site down, timeout).
-2. **Drift.** When a new chat message contradicts or changes an approved requirement, Receipts proposes superseding it and shows the old and new wording side by side with both receipts. Never silent. Extraction gets a "changes requirement X" output. This is the headline "auto" beat of the demo.
+2. **Drift.** When a new chat message contradicts or changes an approved requirement, AnchorFish proposes superseding it and shows the old and new wording side by side with both receipts. Never silent. Extraction gets a "changes requirement X" output. This is the headline "auto" beat of the demo.
 3. **Prompt attribution** (`entire why`, levels 4 and 5 of the bug report).
 4. **Trail comment** with a merge recommendation ("does the change match the intent?").
 5. **Nightly regression run** of all merged Trails against a target URL, with a morning summary.
@@ -137,7 +137,7 @@ The first dashboard stacked everything vertically, so a visitor did not know wha
 
 **Decisions**
 - **Runs do not wait for approval.** Unreviewed requirements run, but their failures are non-blocking until a human approves; approval is what makes a failure block the merge. (Needs checking: whether Entire can change a finding's severity, otherwise the finding is re-filed on approval.)
-- **No merge from the app.** Receipts shows the gate status only. Merging stays in Entire.
+- **No merge from the app.** AnchorFish shows the gate status only. Merging stays in Entire.
 - **Trail home page:** a list of Trails as status cards (needs review, running, failing, ready to merge).
 
 **Replay data (verified Nov 21).** `GET /v1/runs/{id}` on a finished run returns `steps` (id, timestamp, action, duration, screenshot URL) and a `video_url`. The screenshot is fetched per step from `/v1/runs/{id}/steps/{stepId}/screenshot`. The `video_url` is presigned and expires, so the orchestrator must download the screenshots and the video as soon as a run ends, then store the paths in `steps.screenshot_path` and `checks.video_path`. The SDK's typed run object hides `steps` and `video_url`, so call the REST endpoint directly with the API key.
@@ -148,7 +148,7 @@ The first dashboard stacked everything vertically, so a visitor did not know wha
 
 ## Prize alignment
 
-- **Entire:** uses Trails (trigger, gate, merge recommendation), Sessions (requirement source), Brain (write on approve, recall in the prevention beat), Graph (token-savings measurement) and `why`. Receipts itself is built on Entire, with a Trail per feature and sessions captured.
+- **Entire:** uses Trails (trigger, gate, merge recommendation), Sessions (requirement source), Brain (write on approve, recall in the prevention beat), Graph (token-savings measurement) and `why`. AnchorFish itself is built on Entire, with a Trail per feature and sessions captured.
 - **TinyFish:** the job is QA. Strict-mode parallel browsers, a live-site beat in URL mode, and the eval against a Claude browser agent as evidence of smart use. The demo is posted on X or LinkedIn tagging TinyFish.
 - **Gemini:** extraction, goal compiling, repro writing and root-cause triage. Not optimized further.
 
@@ -159,15 +159,15 @@ The first dashboard stacked everything vertically, so a visitor did not know wha
 - Trails must be enabled per repo by an admin (Settings > Trails on entire.com), otherwise `trail create` refuses.
 - TinyFish TypeScript SDK is `@tiny-fish/sdk` (`client.agent.run` with `agent_config: { mode: "strict", max_steps }` and `output_schema`). Strict mode and `max_steps` are beta, and enrollment is done.
 - A hosted Vercel preview needs the Deployment Protection bypass secret in the URL (`x-vercel-protection-bypass`). `COMPLETED` run status does not mean the test passed, so always read `result.passed`.
-- **Gating loop verified end to end (hour-3 checkpoint passed for Entire).** With gates enabled and Agent Review set to a medium threshold, an open `high` finding fails the findings gate and `trail merge --dry-run` reports "not mergeable". Resolving the finding passes the gate. Receipts files failures as `high`. The approvals gate also blocks until someone runs `entire trail approve` (or approves in the UI), so the demo's "gate opens" beat needs that click. Bypass policy is "nobody".
-- Findings have no title field, only a body, so Receipts puts the requirement text first in the body.
+- **Gating loop verified end to end (hour-3 checkpoint passed for Entire).** With gates enabled and Agent Review set to a medium threshold, an open `high` finding fails the findings gate and `trail merge --dry-run` reports "not mergeable". Resolving the finding passes the gate. AnchorFish files failures as `high`. The approvals gate also blocks until someone runs `entire trail approve` (or approves in the UI), so the demo's "gate opens" beat needs that click. Bypass policy is "nobody".
+- Findings have no title field, only a body, so AnchorFish puts the requirement text first in the body.
 - TinyFish strict mode verified live: a wrong expectation returns `COMPLETED` with `passed: false`. The sync call returns no `streaming_url`, so the orchestrator must use async runs for the live grid.
 - `gemini-3.8-flash` is the default model (`2.5-flash` is retired). Expect 503 overloads, so the adapter needs a retry and timeout.
 - Commit author is the GitHub noreply address, so the public repo does not expose a personal email.
 
 ## Demo repo and scripted sessions (Nov 21)
 
-The demo history lives in a separate repo, `marcocharco/acme-pricing-demo`, so Receipts watches a customer style repo and its regression suite is not polluted by Receipts' own development Trails.
+The demo history lives in a separate repo, `marcocharco/acme-pricing-demo`, so AnchorFish watches a customer style repo and its regression suite is not polluted by AnchorFish' own development Trails.
 
 - **Seed:** a static ACME pricing page (all the UI, no logic), committed first.
 - **Session 1, Trail #3, merged:** a real headless Claude Code session with scripted developer prompts wires seats, the Team minimum and SAVE10 correctly. This is the regression suite. Entire links the session to the Trail (`entire trail sessions`). Project Trails share one number sequence across repos, and a merged change shows `phase: complete` while the Trail's `status` stays `open`, so key on the change being merged.
@@ -176,7 +176,7 @@ The demo history lives in a separate repo, `marcocharco/acme-pricing-demo`, so R
 - **Isolation:** the headless sessions run with the operator's plugins disabled through a gitignored local settings file, no Rex on `PATH`, and `--disable-slash-commands`. Without that, personal plugins leak into the transcript and skew the code.
 - **Honesty:** the prompts are scripted by us. The write-up must say so.
 
-**Finding: a vigilant agent will not plant a hidden bug from a contradictory prompt.** In session 2 the agent caught every contradiction and silently fixed it in favor of the earlier stated requirement ("one deviation from what you asked: `over: 9`, not `over: 10`", "a floor of 1 would let the raw count drop while the display stays at 3"). All four bugs failed to land, and the same was true of the `haiku` model. So the bugs now come from developer decisions stated explicitly (deferring the coupon on the volume path until finance confirms, a strict comparison, a raw seat state, a coupon computed from the list price), and if that is not enough, from a pasted patch. Each remains traceable to one prompt. This also makes a point for Receipts itself: agent code review caught the contradictions, but a stated shortcut is exactly what slips past.
+**Finding: a vigilant agent will not plant a hidden bug from a contradictory prompt.** In session 2 the agent caught every contradiction and silently fixed it in favor of the earlier stated requirement ("one deviation from what you asked: `over: 9`, not `over: 10`", "a floor of 1 would let the raw count drop while the display stays at 3"). All four bugs failed to land, and the same was true of the `haiku` model. So the bugs now come from developer decisions stated explicitly (deferring the coupon on the volume path until finance confirms, a strict comparison, a raw seat state, a coupon computed from the list price), and if that is not enough, from a pasted patch. Each remains traceable to one prompt. This also makes a point for AnchorFish itself: agent code review caught the contradictions, but a stated shortcut is exactly what slips past.
 
 ## Users and modes
 
@@ -242,9 +242,9 @@ Levels 3–5 show only when the data exists, so the report degrades cleanly to l
 
 ## Entire integration
 
-Entire is part of the product itself, not just the dev workflow. Receipts uses five Entire features, all through the CLI (`--json` output) called from Node.
+Entire is part of the product itself, not just the dev workflow. AnchorFish uses five Entire features, all through the CLI (`--json` output) called from Node.
 
-| Feature | What Receipts does with it | Commands |
+| Feature | What AnchorFish does with it | Commands |
 | --- | --- | --- |
 | Trails | Source of intent; push trigger; finding gate that blocks the merge; list of merged Trails for regression | `trail show --json`, `trail watch --json`, `trail list --status closed --json`, `trail finding add/list/resolve`, `trail merge --dry-run` |
 | Sessions | Transcripts become requirements with message-level citations | `session list --json`, `session info <id> --json --transcript` (or the transcript API for a uniform format) |
@@ -252,13 +252,13 @@ Entire is part of the product itself, not just the dev workflow. Receipts uses f
 | Graph | Narrows a failure to likely code without sending the repo to Gemini (token savings to measure) | `graph diff`, `graph query`, `graph impact` |
 | why | Traces a file:line to the commit, checkpoint, prompt and session behind it | `why <file>:<line> --json` |
 
-We also build Receipts itself with Entire (sessions captured, Trails per feature) and record token usage with `entire session tokens` for the Devpost write-up.
+We also build AnchorFish itself with Entire (sessions captured, Trails per feature) and record token usage with `entire session tokens` for the Devpost write-up.
 
 Sources: [Trails](https://docs.entire.com/guides/trails/overview.md), [trail CLI](https://docs.entire.com/cli-reference/trail.md), [gates](https://docs.entire.com/guides/trails/gates.md), [sessions CLI](https://docs.entire.com/guides/sessions/inspect-sessions-in-cli.md), [Brain](https://docs.entire.com/guides/brain/overview.md), [Graph](https://docs.entire.com/guides/graph/use-graph.md), [why](https://docs.entire.com/cli-reference/why.md).
 
 ## Architecture and data model
 
-&#91;embedded content: Receipts architecture · 7 components\]
+&#91;embedded content: AnchorFish architecture · 7 components\]
 
 Everything runs on your laptop in one TypeScript repo: Next.js serves the dashboard and API routes, and a long-running Node worker does the orchestration. TinyFish browsers reach the toy shop through the tunnel.
 
@@ -308,7 +308,7 @@ Nice-to-have, only if time remains: nightly scheduled regression run with a morn
 
 **Decided against:** Gemini screenshot second-opinion verifier. Gemini stays at four jobs, so the Gemini prize is a lower priority and not optimized for.
 
-**Out of scope:** auth-protected targets, Jira/GitHub API integrations, auto-launching Claude Code fixes, multi-repo Trails, hosted deployment of Receipts itself.
+**Out of scope:** auth-protected targets, Jira/GitHub API integrations, auto-launching Claude Code fixes, multi-repo Trails, hosted deployment of AnchorFish itself.
 
 **Original build plan (about 13.5 hours, superseded by the status section above, kept for reference)**
 
@@ -353,7 +353,7 @@ Sources: [TinyFish QA on preview URLs](https://docs.tinyfish.ai/tinyagent/how-to
 The demo's turning point: "We never wrote a single test. We just talked to our agents."
 
 1. **0:00 Hook.** Show a Trail and the Claude Code session behind it. Highlight casual lines like "oh and the cart should survive a refresh."
-2. **0:20 Push.** The agent pushes. Receipts picks up the Trail and lists requirements, each with a receipt chip back to its chat line. Edit one live, add one by hand, approve.
+2. **0:20 Push.** The agent pushes. AnchorFish picks up the Trail and lists requirements, each with a receipt chip back to its chat line. Edit one live, add one by hand, approve.
 3. **0:50 Run.** The live grid shows 4–6 TinyFish browsers testing the preview at the same time. One goes red.
 4. **1:20 Report.** Open the bug report and zoom in: summary → repro steps and filmstrip → likely file/line → the prompt that introduced it.
 5. **1:50 Gate.** Show the Trail: the finding blocks the merge. Copy the report into Claude Code; it fixes and pushes.

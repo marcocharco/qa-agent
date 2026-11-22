@@ -1,4 +1,4 @@
--- Receipts schema. Idempotent: safe to run repeatedly.
+-- AnchorFish schema. Idempotent: safe to run repeatedly.
 create table if not exists trails (
   id text primary key,
   title text not null,

@@ -9,9 +9,9 @@ const exec = promisify(execFile);
 
 type Job = { proc: ChildProcess; log: string[]; exitCode: number | null; startedAt: number };
 // Survives Next's hot reloads in dev.
-const g = globalThis as unknown as { __receiptsJobs?: Map<string, Job>; __receiptsNumbers?: Map<string, string> };
-const jobs = (g.__receiptsJobs ??= new Map());
-const numbers = (g.__receiptsNumbers ??= new Map());
+const g = globalThis as unknown as { __anchorfishJobs?: Map<string, Job>; __anchorfishNumbers?: Map<string, string> };
+const jobs = (g.__anchorfishJobs ??= new Map());
+const numbers = (g.__anchorfishNumbers ??= new Map());
 
 export const missingEnv = () => ["ENTIRE_PROJECT", "TARGET_REPO_DIR", "TARGET_URL"].filter((k) => !process.env[k]);
 

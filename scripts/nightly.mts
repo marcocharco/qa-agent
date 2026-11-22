@@ -1,7 +1,7 @@
 // Usage: npx tsx --env-file=.env.local scripts/nightly.mts
 // Re-runs every active Trail (its own requirements plus the regression suite) against TARGET_URL and prints a
 // morning summary. Failures are filed as findings like any run. Schedule it, for example with cron:
-//   0 3 * * *  cd /path/to/receipts && npx tsx --env-file=.env.local scripts/nightly.mts >> nightly.log 2>&1
+//   0 3 * * *  cd /path/to/anchorfish && npx tsx --env-file=.env.local scripts/nightly.mts >> nightly.log 2>&1
 import { closeDb } from "../lib/db";
 import { activeTrailNumbers, showTrail } from "../lib/entire";
 import { geminiModel } from "../lib/gemini";

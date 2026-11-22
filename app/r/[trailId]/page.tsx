@@ -28,7 +28,7 @@ export default async function Report({ params }: { params: Promise<{ trailId: st
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="flex items-center gap-2 text-xs text-muted"><span className={chip}>{d.branch || "no branch"}</span>{d.commit && <span className={chip}>{d.commit.slice(0, 7)}</span>}{d.ranAt && <span>tested {ago(d.ranAt)}</span>}</span>
         <div className="flex items-center gap-3">
-          <Link href={`/t/${trailId}`} className="text-sm text-muted hover:text-foreground">Open in Receipts</Link>
+          <Link href={`/t/${trailId}`} className="text-sm text-muted hover:text-foreground">Open in AnchorFish</Link>
           <CopyReport markdown={prMarkdown(d, "https://REPORT_ORIGIN")} />
         </div>
       </div>

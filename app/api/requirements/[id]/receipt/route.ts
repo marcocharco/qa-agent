@@ -4,8 +4,8 @@ import { sessionTranscript } from "@/lib/entire";
 import { parseTranscript } from "@/lib/transcript";
 
 // Reading a transcript shells out to the Entire CLI, so keep what we have read.
-const g = globalThis as unknown as { __receiptsTranscripts?: Map<string, Message[]> };
-const cache = (g.__receiptsTranscripts ??= new Map());
+const g = globalThis as unknown as { __anchorfishTranscripts?: Map<string, Message[]> };
+const cache = (g.__anchorfishTranscripts ??= new Map());
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const src = await getRequirementSource((await params).id);

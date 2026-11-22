@@ -25,10 +25,10 @@ Names below are the ones the real session 1 produced in `acme-pricing-demo`: `ca
 - Code change: in the non-volume branch of `annualQuote()` the coupon is computed from `unitPrice * seats * 12`, not from the discounted annual amount. Pro 5 seats annual: -$114.00, total $798.00.
 
 ## Untestable ask
-- 02/04 ("the pricing page should feel more trustworthy"). Phrased as ideas only, so a faithful agent changes no code. Receipts should list it as not testable.
+- 02/04 ("the pricing page should feel more trustworthy"). Phrased as ideas only, so a faithful agent changes no code. AnchorFish should list it as not testable.
 
 ## Notes
-- A and D both live in `annualQuote()`. A comes from 02/05, D from 02/09. The A requirement is still stated for annual in 02/03, which is what Receipts should cite.
+- A and D both live in `annualQuote()`. A comes from 02/05, D from 02/09. The A requirement is still stated for annual in 02/03, which is what AnchorFish should cite.
 - Session 3 prompt 1 pastes the report with the four "Likely cause" lines. 03/03 merges the two quote functions back into one.
 - Real agents drift. After each session check the code and run `verify/check.mjs` (`--expect buggy` after session 2, `--expect correct` after session 3). If a bug did not land, reword the prompt that should have introduced it, not the requirement.
 

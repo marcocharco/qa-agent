@@ -1,11 +1,11 @@
 # Handoff: dashboard session
 
-You are continuing the **Receipts dashboard**, a local web app where the user reviews and edits requirements, watches live tests, and reads bug reports. Read `SPEC.md` (Status, "Features", "Demo script") and this file. Work only in this worktree.
+You are continuing the **AnchorFish dashboard**, a local web app where the user reviews and edits requirements, watches live tests, and reads bug reports. Read `SPEC.md` (Status, "Features", "Demo script") and this file. Work only in this worktree.
 
 ## Three sessions, three owners
 - **Product session** (Rex tab `product-session`): `/Users/marco/Developer/hw13`, branch `main`. The engine: orchestrator, Entire integrations, findings, eval. Its notes are in `HANDOFF.md`.
 - **Dashboard session (you):** `/Users/marco/Developer/hw13-ui`, branch `dashboard`, localhost port **3100**.
-- **Demo session:** `/Users/marco/Developer/hw13-demo` and the separate repo `/Users/marco/Developer/acme-pricing-demo`. It builds the site and chat history that Receipts tests. Notes in `demo/HANDOFF-DEMO.md` on branch `demo-kit`.
+- **Demo session:** `/Users/marco/Developer/hw13-demo` and the separate repo `/Users/marco/Developer/acme-pricing-demo`. It builds the site and chat history that AnchorFish tests. Notes in `demo/HANDOFF-DEMO.md` on branch `demo-kit`.
 - You own `app/**`, `components/**`, and the dashboard's own libs: `lib/queries.ts`, `lib/process.ts`, `lib/report.ts`, `lib/brain.ts`. Do **not** edit `lib/orchestrator.ts`, `lib/entire.ts`, `lib/compile.ts`, `lib/extract.ts`, `lib/findings.ts`, `lib/verdict.ts`, `lib/tinyfish.ts`, `lib/gemini.ts` or `db/schema.sql`. Import from them. If you truly need a change there, stop and tell the user exactly what.
 - Do not push, do not touch `main`, do not edit the other worktrees. Never print `.env.local` values (it is a symlink to the product tree's file). Never call Gemini live (limited credits). Never use the em dash.
 

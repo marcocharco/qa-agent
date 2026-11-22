@@ -3,14 +3,14 @@
 Read `SPEC.md` first (decisions, priority order, prize alignment). This file is the current state of the build.
 
 ## Two sessions, two owners
-- **Product session (you):** everything in this repo except `demo/`. Receipts itself: orchestrator, dashboard, reports, Entire integrations, eval.
-- **Demo session:** `demo/` in this repo and the separate repo `marcocharco/acme-pricing-demo` (local clone at `/Users/marco/Developer/acme-pricing-demo`). It scripts the demo chat history and builds the Trails Receipts will test.
+- **Product session (you):** everything in this repo except `demo/`. AnchorFish itself: orchestrator, dashboard, reports, Entire integrations, eval.
+- **Demo session:** `demo/` in this repo and the separate repo `marcocharco/acme-pricing-demo` (local clone at `/Users/marco/Developer/acme-pricing-demo`). It scripts the demo chat history and builds the Trails AnchorFish will test.
 - `target/` is a shared fixture (ACME pricing page with bug flags, used for the eval and for development). Change it only if the product needs it.
 - Use a git worktree or a branch if both sessions might commit to this repo at the same time.
 
 ## What exists and is tested
 - `lib/compile.ts`: requirement to strict QA goal (Gemini behind `StructuredModel`). `lib/extract.ts`: chat to requirements with verified citations. `lib/findings.ts`: finding create, auto-resolve, reviewer override. `lib/verdict.ts`: the agent's own verdict decides, errored runs never pass. 21 unit tests, model faked at the boundary.
-- Adapters, verified live but not unit tested: `lib/gemini.ts` (model fallback, backoff, quota errors fall through), `lib/tinyfish.ts` (`agent.stream`, returns `streamingUrl`, step purposes), `lib/entire.ts` (findings via the CLI, requirement id carried in the finding body as `[receipts:<id>]`).
+- Adapters, verified live but not unit tested: `lib/gemini.ts` (model fallback, backoff, quota errors fall through), `lib/tinyfish.ts` (`agent.stream`, returns `streamingUrl`, step purposes), `lib/entire.ts` (findings via the CLI, requirement id carried in the finding body as `[anchorfish:<id>]`).
 - `scripts/run-slice.mts`: first live loop (compile, parallel TinyFish runs, findings on the current Trail). Worked end to end.
 - `db/schema.sql` and `npm run db:migrate`: schema on local Postgres (database `receipts`). Not wired to anything yet.
 - `app/` is still the create-next-app placeholder. No dashboard yet.
