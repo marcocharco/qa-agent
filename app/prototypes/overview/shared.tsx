@@ -91,7 +91,7 @@ export function TopBar({ data, live, right }: { data: Data; live: Live; right?: 
 export function LiveBrowser({ live, className = "" }: { live: Live; className?: string }) {
   const running = live.checks.find((c) => c.status === "running" && c.streamingUrl?.startsWith("http"));
   const sample = live.checks.find((c) => c.status === "running" && c.streamingUrl);
-  const names = live.checks.filter((c) => c.status === "running" && c.streamingUrl === (running ?? sample)?.streamingUrl).map((c) => c.requirement);
+  const names = live.checks.filter((c) => c.status === "running" && c.streamingUrl === (running ?? sample)?.streamingUrl).map((c) => shortLabel(c.requirement, 40));
   return (
     <div className={`flex flex-col overflow-hidden rounded-2xl border border-line bg-panel ${className}`}>
       <div className="flex items-center justify-between gap-3 border-b border-line bg-background px-4 py-2.5 text-xs text-muted">
@@ -130,3 +130,82 @@ export function ReqActions({ r, compact = false }: { r: RequirementRow; compact?
 
 export const Badge = StatusBadge;
 export { btn, btnGhost, chip };
+
+/** A short label for a long requirement sentence: the first clause, trimmed. A real title column replaces this. */
+export function shortLabel(text: string, max = 46): string {
+  const clause = text.split(/[:.]\s/)[0].replace(/^(The|A|An)\s+/i, "");
+  const t = clause.length > max ? clause.slice(0, max).replace(/\s+\S*$/, "") + "..." : clause;
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+export function groupByFeature(cards: Card[]): { feature: string; cards: Card[] }[] {
+  const m = new Map<string, Card[]>();
+  for (const c of cards) m.set(c.req.feature ?? "Other", [...(m.get(c.req.feature ?? "Other") ?? []), c]);
+  return [...m].map(([feature, cs]) => ({ feature, cards: cs }));
+}
+
+/** idle: never ran. running: a run is open. done: the last run finished. */
+export function phaseOf(live: Live): "idle" | "running" | "done" {
+  if (!live.run) return "idle";
+  return live.run.finishedAt ? "done" : "running";
+}
+
+/** One plain sentence on what is happening, so the page always answers "what am I looking at". */
+export function nowLine(cards: Card[], live: Live): string {
+  const phase = phaseOf(live);
+  const s = summarize(cards);
+  if (phase === "idle") return `Nothing has run yet. ${cards.length} requirements are ready to test.`;
+  if (phase === "running") {
+    const r = cards.find((c) => c.lane === "running");
+    const done = cards.filter((c) => c.check && c.lane !== "running").length;
+    return r ? `Testing "${shortLabel(r.req.text, 40)}" · ${done} of ${live.checks.length} checks done` : `Running · ${live.checks.length} checks started`;
+  }
+  const v = verdictOf(cards);
+  return v.verdict === "hold" ? `${s.failed} ${s.failed === 1 ? "requirement fails" : "requirements fail"}. Hold the merge.` : v.verdict === "review" ? "Nothing is broken, but some results need a look." : "Everything passes. Safe to merge.";
+}
+
+/** Splits "what happened. Saw: <observed text>" as the orchestrator writes it. */
+export function splitReason(reason: string | null): { claim: string; saw: string | null } {
+  if (!reason) return { claim: "", saw: null };
+  const i = reason.indexOf(" Saw: ");
+  return i < 0 ? { claim: reason, saw: null } : { claim: reason.slice(0, i), saw: reason.slice(i + 6) };
+}
+
+export const laneDot: Record<Lane, string> = { proposed: "bg-accent", ready: "bg-muted/40", running: "bg-accent animate-pulse", passed: "bg-pass", attention: "bg-fail" };
+
+/** Results, worst first: what happened and what the page showed, details folded away. */
+export function ResultList({ cards, trailId }: { cards: Card[]; trailId: string }) {
+  const failed = cards.filter((c) => c.check?.status === "failed");
+  const review = cards.filter((c) => c.check?.status === "review" || c.check?.status === "errored");
+  const passed = cards.filter((c) => c.check?.status === "passed");
+  const row = (c: Card) => {
+    const { claim, saw } = splitReason(c.check?.reason ?? null);
+    return (
+      <li key={c.req.id} className="rounded-2xl border border-line bg-background p-4">
+        <div className="flex items-start justify-between gap-3">
+          <p className="font-medium leading-snug">{shortLabel(c.req.text, 70)}</p>
+          {c.check && <StatusBadge status={c.check.status} />}
+        </div>
+        {claim && <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted">{claim}</p>}
+        {saw && <p className="mt-2 rounded-lg bg-panel px-3 py-2 font-mono text-xs leading-relaxed text-muted">Saw: {saw}</p>}
+        <div className="mt-3 flex items-center gap-4">
+          {c.check?.status === "failed" && <Link className="text-sm font-medium text-accent hover:underline" href={`/t/${trailId}/checks/${c.check.id}`}>Bug report →</Link>}
+          <details className="text-xs text-muted"><summary className="cursor-pointer">Full requirement</summary><p className="mt-1 max-w-prose">{c.req.text}</p></details>
+        </div>
+      </li>
+    );
+  };
+  return (
+    <div className="space-y-6">
+      {failed.length > 0 && <section><h3 className="mb-2 text-sm font-semibold text-fail">Failed · {failed.length}</h3><ul className="space-y-3">{failed.map(row)}</ul></section>}
+      {review.length > 0 && <section><h3 className="mb-2 text-sm font-semibold text-accent">Needs a look · {review.length}</h3><ul className="space-y-3">{review.map(row)}</ul></section>}
+      {passed.length > 0 && (
+        <details className="rounded-2xl border border-line px-4 py-3">
+          <summary className="cursor-pointer text-sm font-semibold text-pass">Passed · {passed.length}</summary>
+          <ul className="mt-3 space-y-1.5 text-sm text-muted">{passed.map((c) => <li key={c.req.id}>✓ {shortLabel(c.req.text, 80)}</li>)}</ul>
+        </details>
+      )}
+      {!failed.length && !review.length && !passed.length && <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-muted">No results yet. Press Run now.</p>}
+    </div>
+  );
+}

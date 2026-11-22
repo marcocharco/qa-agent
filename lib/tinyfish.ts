@@ -11,11 +11,14 @@ const OUTPUT_SCHEMA = {
   required: ["passed", "failed_step", "reason"],
 };
 
-const FEATURE_SCHEMA = {
+const featureSchema = (checks: number) => ({
   type: "object",
   properties: {
     results: {
       type: "array",
+      // The agent once returned an empty list after finishing. Require one result per check.
+      minItems: checks,
+      maxItems: checks,
       items: {
         type: "object",
         properties: {
@@ -30,7 +33,7 @@ const FEATURE_SCHEMA = {
     },
   },
   required: ["results"],
-};
+});
 
 export type CheckRun = RunnerOutcome & {
   runId: string | null;
@@ -74,4 +77,4 @@ export async function runCheck(
 
 /** One browser session for a whole feature: several checks in order, one verdict each. */
 export const runFeature = (goal: string, url: string, checks: number, hooks: { onStreamingUrl?: (u: string) => void } = {}) =>
-  runCheck(goal, url, hooks, FEATURE_SCHEMA, { maxSteps: Math.min(100, 25 * checks), maxSeconds: Math.min(900, 150 * checks) });
+  runCheck(goal, url, hooks, featureSchema(checks), { maxSteps: Math.min(100, 25 * checks), maxSeconds: Math.min(900, 150 * checks) });

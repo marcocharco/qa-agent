@@ -3,16 +3,16 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import "./picker.css";
 import type { Data } from "./types";
-import Board from "./variants/Board";
-import Queue from "./variants/Queue";
+import Focus from "./variants/Focus";
+import Phase from "./variants/Phase";
 import Stage from "./variants/Stage";
-import Widgets from "./variants/Widgets";
+import Tabs from "./variants/Tabs";
 
 const VARIANTS = [
-  { name: "Board", C: Board },
-  { name: "Widgets", C: Widgets },
   { name: "Stage", C: Stage },
-  { name: "Queue", C: Queue },
+  { name: "Focus", C: Focus },
+  { name: "Phase", C: Phase },
+  { name: "Tabs", C: Tabs },
 ];
 
 export default function Harness({ data, initial }: { data: Data; initial: number }) {

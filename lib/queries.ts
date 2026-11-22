@@ -34,16 +34,18 @@ export type RequirementRow = {
   sourceKind: "description" | "session" | "manual";
   quote: string | null;
   edited: boolean;
+  /** Requirements of one feature share a browser session. Null when ungrouped. */
+  feature: string | null;
   /** The earlier requirement this one changes (drift). It stays active until this one is approved. */
   supersedes: { id: string; text: string } | null;
 };
 
 const reqCols = `r.id, r.trail_id, t.title as trail_title, r.text, r.type, r.confidence, r.testable, r.untestable_reason,
-  r.status, r.source_kind, r.quote, r.edited_by_human, s.id as sup_id, s.text as sup_text`;
+  r.status, r.source_kind, r.quote, r.edited_by_human, r.feature, s.id as sup_id, s.text as sup_text`;
 const toReq = (r: Record<string, never>): RequirementRow => ({
   id: r.id, trailId: r.trail_id, trailTitle: r.trail_title, text: r.text, type: r.type, confidence: r.confidence,
   testable: r.testable, untestableReason: r.untestable_reason, status: r.status, sourceKind: r.source_kind,
-  quote: r.quote, edited: r.edited_by_human,
+  quote: r.quote, edited: r.edited_by_human, feature: r.feature,
   supersedes: r.sup_id ? { id: r.sup_id, text: r.sup_text } : null,
 });
 

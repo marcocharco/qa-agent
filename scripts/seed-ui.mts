@@ -55,6 +55,9 @@ async function seed() {
       [r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11], r[12] ?? false],
     );
   }
+  for (const [id, f] of [["d1", "Volume discount"], ["d2", "Annual billing"], ["d3", "Annual billing"], ["d4", "Annual billing"], ["d10", "Annual billing"], ["d6", "Annual billing"], ["b1", "Seats"], ["b2", "Seats"], ["b3", "Coupon"], ["b4", "Coupon"]]) {
+    await q("update requirements set feature=$2 where id=$1", [`sample-r-${id}`, f]);
+  }
   await q("update requirements set supersedes_id='sample-r-d2' where id='sample-r-d10'");
   const old = Date.now() - 3 * 3600_000;
   await q("insert into runs (id,trail_id,head_sha,started_at,finished_at,passed_count,failed_count,errored_count) values ('sample-run-old',$1,'9f8e7d6',$2,$3,4,1,0)", [DEMO, new Date(old - 140_000), new Date(old)]);

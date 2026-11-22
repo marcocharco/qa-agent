@@ -87,5 +87,5 @@ Rules:
 - For every check, first copy into "observed" the exact visible text of the price lines and labels the check is about, as they appear on the page after the steps (for example the Subtotal, discount and total lines). Copy only what you see. Never copy the Expected text and never fill in a line that is not on the page: if a line is missing, say it is missing.
 - Only then compare "observed" with Expected. passed is true only if they match exactly. Do not assume anything passed.
 - "check" is the check number. failed_step is a step number inside that check, or null if the check passed. If every step could be done but the page differs from Expected, give the last step of that check.
-- Return one result for every check.`;
+- Return exactly one result for every check, in order. Never return an empty list: if a check cannot be started or finished for any reason, still return its result with passed set to false, observed set to what you saw instead, and the reason.`;
 }
