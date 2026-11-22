@@ -14,6 +14,7 @@ import { parseTranscript } from "./transcript";
 import { toFeatureVerdicts, type Verdict } from "./verdict";
 import { needsSecondRun, reconcile } from "./confirm";
 import { recommend } from "./recommendation";
+import { saveReplay } from "./replay";
 import type { CheckRun } from "./tinyfish";
 
 const execGit = promisify(execFile);
@@ -164,7 +165,9 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
         });
         // The stream is dead once the session ends. Clear it so the live view never embeds a finished browser.
         await db().query("update checks set streaming_url=null where id = any($1)", [ids]);
-        return { run, verdicts: toFeatureVerdicts(run, items.length) };
+        // Download the screenshots and recording right away, the video link expires. A failure here never loses a verdict.
+        const replay = run.runId ? await saveReplay(run.runId).catch((e) => { cfg.log?.(`replay not saved: ${String(e).slice(0, 100)}`); return null; }) : null;
+        return { run, replay, verdicts: toFeatureVerdicts(run, items.length) };
       };
       const attempt = (run: CheckRun) => ({ runId: run.runId, status: run.status, error: run.error, result: run.result, streamingUrl: run.streamingUrl });
       const first = await session(compiled, "");
@@ -177,13 +180,21 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
         const last = v2 ? second!.run : first.run;
         await db().query(
           `update checks set tinyfish_run_id=$2, passed=$3, failed_step=$4, reason=$5, streaming_url=coalesce($6,streaming_url),
-             duration_ms=$7, classification=$8, attempts=$9, raw_result=$10 where id=$1`,
+             duration_ms=$7, classification=$8, attempts=$9, raw_result=$10, video_path=$11, session_pos=$12 where id=$1`,
           [c.checkId, last.runId, final.state === "passed" ? true : final.state === "failed" ? false : null, final.failedStep, final.reason,
-           last.streamingUrl, Date.now() - t, final.classification, v2 ? 2 : 1, JSON.stringify(v2 ? [attempt(first.run), attempt(second!.run)] : [attempt(first.run)])],
+           last.streamingUrl, Date.now() - t, final.classification, v2 ? 2 : 1, JSON.stringify(v2 ? [attempt(first.run), attempt(second!.run)] : [attempt(first.run)]),
+           (v2 ? second!.replay : first.replay)?.video ?? null, (v2 ? retry.indexOf(c) : i) + 1],
         );
-        // The session's actions are shared by its checks, so each check keeps the whole list of its last session.
-        for (const [k, purpose] of last.steps.entries()) {
-          await db().query("insert into steps (check_id,index,purpose) values ($1,$2,$3)", [c.checkId, k + 1, purpose]);
+        // The session's steps are shared by its checks, so each check keeps the whole list of its last session.
+        const rp = (v2 ? second!.replay : first.replay)?.steps ?? [];
+        if (rp.length) {
+          for (const [k, st] of rp.entries()) {
+            await db().query("insert into steps (check_id,index,action,screenshot_path,duration_s,at) values ($1,$2,$3,$4,$5,$6)", [c.checkId, k + 1, st.action, st.file, st.durationS, st.at]);
+          }
+        } else {
+          for (const [k, purpose] of last.steps.entries()) {
+            await db().query("insert into steps (check_id,index,purpose) values ($1,$2,$3)", [c.checkId, k + 1, purpose]);
+          }
         }
         cfg.log?.(`${final.state.toUpperCase()}${final.classification ? ` (${final.classification})` : ""} ${c.r.text}`);
         if (final.state === "errored") errored++;

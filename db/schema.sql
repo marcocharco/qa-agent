@@ -90,3 +90,8 @@ alter table checks add column if not exists classification text
 
 -- Drift: a proposed requirement that changes an earlier one. The earlier one is only superseded when a human approves.
 alter table requirements add column if not exists supersedes_id text references requirements(id);
+
+-- Replay: per-step timing and the position of a check inside its shared browser session.
+alter table steps add column if not exists duration_s real;
+alter table steps add column if not exists at timestamptz;
+alter table checks add column if not exists session_pos int;
