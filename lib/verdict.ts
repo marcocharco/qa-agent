@@ -33,3 +33,31 @@ export function toVerdict(o: RunnerOutcome): Verdict {
     ? { state: "passed", failedStep: null, reason: v.reason }
     : { state: "failed", failedStep: v.failed_step, reason: v.reason };
 }
+
+const featureOutput = z.object({
+  results: z.array(
+    z.object({
+      check: z.number().int(),
+      passed: z.boolean(),
+      failed_step: z.number().int().nullable(),
+      /** Verbatim visible text the agent saw. A pass without it is not trusted (the agent may echo the expectation). */
+      observed: z.string(),
+      reason: z.string(),
+    }),
+  ),
+});
+
+/** One verdict per check (1-based) from a single browser session that ran `count` checks in order. */
+export function toFeatureVerdicts(o: RunnerOutcome, count: number): Verdict[] {
+  const errored = (reason: string): Verdict => ({ state: "errored", failedStep: null, reason });
+  if (o.status !== "COMPLETED") return Array.from({ length: count }, () => errored(`Run ${o.status}: ${o.error ?? "no details"}`));
+  const parsed = featureOutput.safeParse(o.result);
+  if (!parsed.success) return Array.from({ length: count }, () => errored("The agent returned no valid verdict"));
+  return Array.from({ length: count }, (_, i) => {
+    const r = parsed.data.results.find((x) => x.check === i + 1);
+    if (!r) return errored(`The agent reported no result for check ${i + 1}`);
+    if (r.passed && !r.observed.trim()) return errored("The agent passed this check without quoting what it saw");
+    const reason = r.observed.trim() ? `${r.reason} Saw: ${r.observed.trim()}` : r.reason;
+    return r.passed ? { state: "passed", failedStep: null, reason } : { state: "failed", failedStep: r.failed_step, reason };
+  });
+}

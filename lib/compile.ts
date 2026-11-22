@@ -62,3 +62,30 @@ export async function compileRequirement(
   const spec = { preconditions: out.preconditions, steps: out.steps, expected: out.expected };
   return { testable: true, spec, goal: renderGoal(spec) };
 }
+
+/**
+ * One goal for one browser session that runs several checks of the same feature in order.
+ * The expected values are given as the thing to compare against, but the agent must first quote
+ * what it actually sees, so a pass cannot be an echo of the expectation.
+ */
+export function renderFeatureGoal(specs: CheckSpec[]): string {
+  const checks = specs
+    .map((spec, i) => {
+      const pre = spec.preconditions.length ? `Starting state: ${spec.preconditions.join("; ")}.\n` : "";
+      const steps = spec.steps.map((s, j) => `  ${j + 1}. ${s}`).join("\n");
+      return `CHECK ${i + 1}\n${pre}Steps:\n${steps}\nExpected: ${spec.expected}`;
+    })
+    .join("\n\n");
+  return `You are testing one feature of a web page in a single browser session. Run the checks below one after another, in order.
+Before every check, reload the page so it starts from a fresh state, then do exactly that check's steps and nothing else.
+
+${checks}
+
+Rules:
+- If a step can't be completed exactly as written, or the page differs from what the steps assume, stop that check, mark it failed with the step number, and move on to the next check. Do not work around problems and do not retry a failed action.
+- If a control is already in the state a step asks for (for example the page already shows Monthly billing), do not click it; just confirm the state.
+- For every check, first copy into "observed" the exact visible text of the price lines and labels the check is about, as they appear on the page after the steps (for example the Subtotal, discount and total lines). Copy only what you see. Never copy the Expected text and never fill in a line that is not on the page: if a line is missing, say it is missing.
+- Only then compare "observed" with Expected. passed is true only if they match exactly. Do not assume anything passed.
+- "check" is the check number. failed_step is a step number inside that check, or null if the check passed. If every step could be done but the page differs from Expected, give the last step of that check.
+- Return one result for every check.`;
+}

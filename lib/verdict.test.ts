@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toVerdict } from "./verdict";
+import { toFeatureVerdicts, toVerdict } from "./verdict";
 
 describe("toVerdict", () => {
   it("passes when the run completed and the agent reported passed: true", () => {
@@ -41,5 +41,24 @@ describe("toVerdict", () => {
   it("never trusts a result on a cancelled run", () => {
     const v = toVerdict({ status: "CANCELLED", error: null, result: { passed: true, failed_step: null, reason: "ok" } });
     expect(v.state).toBe("errored");
+  });
+});
+
+describe("toFeatureVerdicts", () => {
+  const ok = (check: number, passed: boolean, observed = "Total $10.00") => ({ check, passed, failed_step: passed ? null : 1, observed, reason: "r" });
+
+  it("gives one verdict per check from one session", () => {
+    const v = toFeatureVerdicts({ status: "COMPLETED", error: null, result: { results: [ok(1, true), ok(2, false)] } }, 2);
+    expect(v.map((x) => x.state)).toEqual(["passed", "failed"]);
+  });
+
+  it("never trusts a pass that quotes nothing it saw", () => {
+    const v = toFeatureVerdicts({ status: "COMPLETED", error: null, result: { results: [ok(1, true, "  ")] } }, 1);
+    expect(v[0].state).toBe("errored");
+  });
+
+  it("errors a check the agent never reported, and every check when the run did not complete", () => {
+    expect(toFeatureVerdicts({ status: "COMPLETED", error: null, result: { results: [ok(1, true)] } }, 2).map((x) => x.state)).toEqual(["passed", "errored"]);
+    expect(toFeatureVerdicts({ status: "FAILED", error: "boom", result: null }, 2).map((x) => x.state)).toEqual(["errored", "errored"]);
   });
 });

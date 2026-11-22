@@ -11,6 +11,27 @@ const OUTPUT_SCHEMA = {
   required: ["passed", "failed_step", "reason"],
 };
 
+const FEATURE_SCHEMA = {
+  type: "object",
+  properties: {
+    results: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          check: { type: "integer" },
+          passed: { type: "boolean" },
+          failed_step: { type: "integer", nullable: true },
+          observed: { type: "string" },
+          reason: { type: "string" },
+        },
+        required: ["check", "passed", "failed_step", "observed", "reason"],
+      },
+    },
+  },
+  required: ["results"],
+};
+
 export type CheckRun = RunnerOutcome & {
   runId: string | null;
   streamingUrl: string | null;
@@ -23,14 +44,16 @@ export async function runCheck(
   goal: string,
   url: string,
   hooks: { onStreamingUrl?: (u: string) => void } = {},
+  schema: Record<string, unknown> = OUTPUT_SCHEMA,
+  limits = { maxSteps: 40, maxSeconds: 300 },
 ): Promise<CheckRun> {
   const client = new TinyFish();
   const run: CheckRun = { status: "FAILED", error: "Stream ended without a result", result: null, runId: null, streamingUrl: null, steps: [] };
   const stream = await client.agent.stream({
     url,
     goal,
-    agent_config: { mode: "strict", max_steps: 40, max_duration_seconds: 300 },
-    output_schema: OUTPUT_SCHEMA,
+    agent_config: { mode: "strict", max_steps: limits.maxSteps, max_duration_seconds: limits.maxSeconds },
+    output_schema: schema,
     capture_config: { screenshots: true, recording: true },
   });
   for await (const e of stream) {
@@ -48,3 +71,7 @@ export async function runCheck(
   }
   return run;
 }
+
+/** One browser session for a whole feature: several checks in order, one verdict each. */
+export const runFeature = (goal: string, url: string, checks: number, hooks: { onStreamingUrl?: (u: string) => void } = {}) =>
+  runCheck(goal, url, hooks, FEATURE_SCHEMA, { maxSteps: Math.min(100, 25 * checks), maxSeconds: Math.min(900, 150 * checks) });

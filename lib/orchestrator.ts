@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { compileRequirement, type StructuredModel } from "./compile";
+import { compileRequirement, renderFeatureGoal, type CheckSpec, type StructuredModel } from "./compile";
 import { db } from "./db";
 import {
   addFinding, mergedTrailNumbers, openFindings, resolveFinding, sessionTranscript, showTrail,
@@ -9,9 +9,9 @@ import {
 } from "./entire";
 import { extractRequirements, type Source } from "./extract";
 import { decideFindings, type CheckResult } from "./findings";
-import { runCheck } from "./tinyfish";
+import { runFeature } from "./tinyfish";
 import { parseTranscript } from "./transcript";
-import { toVerdict } from "./verdict";
+import { toFeatureVerdicts } from "./verdict";
 
 const execGit = promisify(execFile);
 
@@ -81,19 +81,19 @@ export async function syncTrail(cfg: Config, ref: TrailRef): Promise<TrailInfo> 
   return trail;
 }
 
-type Pending = { id: string; text: string; kind: "new" | "regression" };
+type Pending = { id: string; text: string; kind: "new" | "regression"; feature: string | null };
 
 async function selectRequirements(trailId: string): Promise<Pending[]> {
   // New: this Trail's live asks (proposed or approved). Regression: approved asks of merged Trails.
   const { rows } = await db().query(
-    `select id, text, trail_id = $1 as is_new from requirements
+    `select id, text, feature, trail_id = $1 as is_new from requirements
      where testable and (
        (trail_id = $1 and status in ('proposed','approved'))
        or (trail_id <> $1 and status = 'approved' and trail_id in (select id from trails where state = 'merged')))
-     order by trail_id = $1 desc, text`,
+     order by trail_id = $1 desc, feature nulls last, text`,
     [trailId],
   );
-  return rows.map((r) => ({ id: r.id, text: r.text, kind: r.is_new ? "new" : "regression" }));
+  return rows.map((r) => ({ id: r.id, text: r.text, kind: r.is_new ? "new" : "regression", feature: r.feature }));
 }
 
 const headSha = async (cfg: Config, branch: string) =>
@@ -118,33 +118,59 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
 
   const results: (CheckResult & { checkId: string })[] = [];
   let errored = 0;
-  await pool(cfg.concurrency, reqs, async (r) => {
-    const checkId = randomUUID();
+  // One browser session per feature, its requirements as sequential checks. No feature means a session of one.
+  const groups = new Map<string, Pending[]>();
+  for (const r of reqs) {
+    const key = r.feature ? `${r.kind}:${r.feature}` : `single:${r.id}`;
+    groups.set(key, [...(groups.get(key) ?? []), r]);
+  }
+  await pool(cfg.concurrency, [...groups.values()], async (group) => {
+    const compiled: { r: Pending; spec: CheckSpec; goal: string; checkId: string }[] = [];
+    for (const r of group) {
+      try {
+        const c = await compileRequirement(r, cfg.model);
+        if (!c.testable) {
+          await db().query("update requirements set testable=false, untestable_reason=$2 where id=$1", [r.id, c.reason]);
+          cfg.log?.(`SKIP ${r.text}: ${c.reason}`);
+          continue;
+        }
+        compiled.push({ r, spec: c.spec, goal: c.goal, checkId: randomUUID() });
+      } catch (e) {
+        errored++;
+        cfg.log?.(`ERRORED ${r.text}: ${String(e).slice(0, 160)}`);
+      }
+    }
+    if (!compiled.length) return;
+    const label = group[0].feature ?? group[0].text.slice(0, 50);
     try {
-      const c = await compileRequirement(r, cfg.model);
-      if (!c.testable) {
-        await db().query("update requirements set testable=false, untestable_reason=$2 where id=$1", [r.id, c.reason]);
-        return cfg.log?.(`SKIP ${r.text}: ${c.reason}`);
+      const goal = renderFeatureGoal(compiled.map((c) => c.spec));
+      for (const c of compiled) {
+        await db().query("insert into checks (id,run_id,requirement_id,goal) values ($1,$2,$3,$4)", [c.checkId, runId, c.r.id, goal]);
       }
-      await db().query("insert into checks (id,run_id,requirement_id,goal) values ($1,$2,$3,$4)", [checkId, runId, r.id, c.goal]);
+      const ids = compiled.map((c) => c.checkId);
       const t = Date.now();
-      const run = await runCheck(c.goal, cfg.targetUrl, {
-        onStreamingUrl: (u) => void db().query("update checks set streaming_url=$2 where id=$1", [checkId, u]),
+      cfg.log?.(`session "${label}": ${compiled.length} checks`);
+      const run = await runFeature(goal, cfg.targetUrl, compiled.length, {
+        onStreamingUrl: (u) => void db().query("update checks set streaming_url=$2 where id = any($1)", [ids, u]),
       });
-      const v = toVerdict(run);
-      await db().query(
-        "update checks set tinyfish_run_id=$2, passed=$3, failed_step=$4, reason=$5, streaming_url=coalesce($6,streaming_url), duration_ms=$7 where id=$1",
-        [checkId, run.runId, v.state === "errored" ? null : v.state === "passed", v.failedStep, v.reason, run.streamingUrl, Date.now() - t],
-      );
-      for (const [i, purpose] of run.steps.entries()) {
-        await db().query("insert into steps (check_id,index,purpose) values ($1,$2,$3)", [checkId, i + 1, purpose]);
+      const verdicts = toFeatureVerdicts(run, compiled.length);
+      for (const [i, c] of compiled.entries()) {
+        const v = verdicts[i];
+        await db().query(
+          "update checks set tinyfish_run_id=$2, passed=$3, failed_step=$4, reason=$5, streaming_url=coalesce($6,streaming_url), duration_ms=$7 where id=$1",
+          [c.checkId, run.runId, v.state === "errored" ? null : v.state === "passed", v.failedStep, v.reason, run.streamingUrl, Date.now() - t],
+        );
+        // The session's actions are shared by its checks, so each check keeps the whole list.
+        for (const [j, purpose] of run.steps.entries()) {
+          await db().query("insert into steps (check_id,index,purpose) values ($1,$2,$3)", [c.checkId, j + 1, purpose]);
+        }
+        cfg.log?.(`${v.state.toUpperCase()} ${c.r.text}`);
+        if (v.state === "errored") errored++;
+        else results.push({ checkId: c.checkId, requirementId: c.r.id, requirementText: c.r.text, passed: v.state === "passed", failedStep: v.failedStep, reason: v.reason });
       }
-      cfg.log?.(`${v.state.toUpperCase()} ${r.text}`);
-      if (v.state === "errored") errored++;
-      else results.push({ checkId, requirementId: r.id, requirementText: r.text, passed: v.state === "passed", failedStep: v.failedStep, reason: v.reason });
     } catch (e) {
-      errored++;
-      cfg.log?.(`ERRORED ${r.text}: ${String(e).slice(0, 160)}`);
+      errored += compiled.length;
+      cfg.log?.(`ERRORED session "${label}": ${String(e).slice(0, 160)}`);
     }
   });
 

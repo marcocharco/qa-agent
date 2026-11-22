@@ -78,3 +78,6 @@ create table if not exists bug_reports (
 alter table trails add column if not exists sources_hash text;
 create unique index if not exists requirements_trail_text on requirements (trail_id, lower(text));
 alter table runs add column if not exists errored_count int not null default 0;
+
+-- One browser session per feature: requirements that share a feature run as sequential checks in it.
+alter table requirements add column if not exists feature text;
