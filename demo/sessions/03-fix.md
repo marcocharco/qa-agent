@@ -1,10 +1,10 @@
-Session 3, "fix". A later session, started after AnchorFish blocked the merge. Prompt 1 is the pasted bug report.
+Session 3, "fix". A later session, started after ArcherFish blocked the merge. Prompt 1 is the pasted bug report.
 Prompts are separated by lines containing only [n]. Everything under a marker is one prompt, typed as is.
 
 [1]
 got this back from the QA run on the pricing page, can you fix all four
 
-AnchorFish bug report, ACME pricing, 4 failures
+ArcherFish bug report, ACME pricing, 4 failures
 
 1. Team annual ignores SAVE10
    Requirement: SAVE10 works on both plans in both billing modes.

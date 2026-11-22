@@ -12,7 +12,7 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Separate apps and demo material, not part of AnchorFish itself.
+    // Separate apps and demo material, not part of ArcherFish itself.
     "target/**",
     "demo/**",
   ]),

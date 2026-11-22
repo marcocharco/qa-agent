@@ -11,8 +11,8 @@ export type TrailRef = { project: string; trail: string };
 const flags = (ref?: TrailRef) => (ref ? ["--project", ref.project, "--trail", ref.trail] : []);
 
 // Findings have no title or custom fields, so the requirement id rides in the body.
-const marker = (requirementId: string) => `[anchorfish:${requirementId}]`;
-const markerRe = /\[anchorfish:([^\]]+)\]/;
+const marker = (requirementId: string) => `[archerfish:${requirementId}]`;
+const markerRe = /\[archerfish:([^\]]+)\]/;
 
 export async function openFindings(ref?: TrailRef): Promise<OpenFindings> {
   const { findings } = JSON.parse(await entire(["trail", "finding", "list", "--json", ...flags(ref)]));
@@ -45,7 +45,7 @@ export const setSeverity = (findingId: string, severity: "high" | "low", ref?: T
 export async function postSummary(text: string, ref?: TrailRef): Promise<void> {
   const open = await openFindings(ref);
   if (open.summary) await resolveFinding(open.summary, "Superseded by a newer run", ref);
-  await entire(["trail", "finding", "add", "-m", `AnchorFish summary\n\n${text}\n\n${marker("summary")}`, "--severity", "low", ...flags(ref)]);
+  await entire(["trail", "finding", "add", "-m", `ArcherFish summary\n\n${text}\n\n${marker("summary")}`, "--severity", "low", ...flags(ref)]);
 }
 
 export const resolveFinding = (id: string, message: string, ref?: TrailRef) =>
