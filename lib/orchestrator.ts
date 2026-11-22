@@ -229,8 +229,11 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
       total: results.length + review + errored, passed, failed, needsReview: review, errored,
       failures: results.filter((r) => !r.passed).map((r) => ({ text: r.requirementText, reason: r.reason, blocking: status.get(r.requirementId) === "approved" })),
     });
-    await postSummary(rec.text, ref);
-    cfg.log?.(`recommendation: ${rec.verdict}`);
+    // A run that tested nothing has no recommendation to give, and must not replace the last real one.
+    if (results.length + review > 0) {
+      await postSummary(rec.text, ref);
+      cfg.log?.(`recommendation: ${rec.verdict}`);
+    }
   } finally {
     // The run row is always closed out, and an all-errored run shows as errored, not as 0 failures.
     await db().query("update runs set finished_at=now(), passed_count=$2, failed_count=$3, errored_count=$4 where id=$1", [runId, passed, failed, errored]);

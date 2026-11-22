@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { setStatus } from "@/app/actions";
 import { buildCards, defaultCard, groupByFeature, shortLabel, splitReason, summarize, verdictOf, type Card, type Verdict } from "@/lib/overview";
 import type { Live, RequirementRow } from "@/lib/queries";
@@ -18,6 +18,21 @@ const verdictUi: Record<Verdict, { text: string; cls: string; icon: "running" | 
   idle: { text: "Not run yet", cls: "bg-chip text-muted", icon: "todo" },
   broken: { text: "Run failed", cls: "bg-chip text-muted", icon: "errored" },
 };
+
+type Job = { running: boolean; exitCode: number | null; log: string[]; problem: string | null } | null;
+
+/** Shown from the click on Run now until the first browser streams, so the preview is never a stale replay. */
+function StartingPanel({ job }: { job: Job }) {
+  const last = job?.log.filter((l) => l.trim() && !/^\s*[{}]/.test(l)).at(-1)?.replace(/^\d{2}:\d{2}:\d{2}\s+/, "");
+  return (
+    <div className="flex min-h-[320px] flex-1 flex-col items-center justify-center gap-3 rounded-2xl border border-line bg-panel px-6 text-center" role="status">
+      <StatusIcon state="running" size={32} />
+      <p className="font-medium">Starting the run</p>
+      <p className="max-w-md text-sm text-muted">Reading the Trail, turning requirements into browser goals, then opening the browsers. The live view appears here as soon as the first one starts.</p>
+      {last && <p className="max-w-lg truncate font-mono text-xs text-muted">{last}</p>}
+    </div>
+  );
+}
 
 function LiveFrame({ url, label }: { url: string | null; label: string }) {
   return (
@@ -57,17 +72,20 @@ function ReplayPane({ card }: { card: Card }) {
 
 export default function RunView({ trailId, fresh, regression, initial }: { trailId: string; fresh: RequirementRow[]; regression: RequirementRow[]; initial: Live }) {
   const [live, setLive] = useState(initial);
-  useEffect(() => {
-    let stop = false;
-    const tick = async () => {
-      try {
-        const d = await (await fetch(`/api/trails/${trailId}/live`, { cache: "no-store" })).json();
-        if (!stop) setLive(d.live);
-      } catch { /* next tick retries */ }
-    };
-    const t = setInterval(tick, 3000);
-    return () => { stop = true; clearInterval(t); };
+  const [job, setJob] = useState<Job>(null);
+  const [starting, setStarting] = useState(false);
+  const poll = useCallback(async () => {
+    try {
+      const d = await (await fetch(`/api/trails/${trailId}/live`, { cache: "no-store" })).json();
+      setLive(d.live);
+      setJob(d.job);
+    } catch { /* the next poll retries */ }
   }, [trailId]);
+  useEffect(() => {
+    const t = setInterval(poll, 2500);
+    const first = setTimeout(poll, 0);
+    return () => { clearInterval(t); clearTimeout(first); };
+  }, [poll]);
 
   const cards = useMemo(() => buildCards(fresh, regression, live), [fresh, regression, live]);
   const groups = useMemo(() => groupByFeature(cards), [cards]);
@@ -80,6 +98,10 @@ export default function RunView({ trailId, fresh, regression, initial }: { trail
 
   const sel = cards.find((c) => c.req.id === picked) ?? defaultCard(cards);
   const running = verdict === "running";
+  const runOpen = !!live.run && !live.run.finishedAt;
+  // From the click on Run now until a run row exists, and while a run waits for its first browser.
+  const opening = (starting || !!job?.running) && !runOpen;
+  const waitingForBrowser = running && mode === "auto";
   const liveGroup = groups.find((g) => g.feature === pinned && g.streamingUrl) ?? groups.find((g) => g.streamingUrl);
   // While a run is open the preview follows the live session. Choosing a finished task, or a run that has ended, shows its replay.
   const showLive = running && !!liveGroup && mode === "auto";
@@ -93,10 +115,14 @@ export default function RunView({ trailId, fresh, regression, initial }: { trail
 
   return (
     <div>
-      {live.newestBroken && (
-        <p className="mb-3 flex items-center gap-2.5 rounded-xl bg-chip px-4 py-2.5 text-sm text-muted">
-          <StatusIcon state="errored" />The newest run could not start any test, so this shows the run before it. If the model is out of credits, new runs fail until that is fixed.
-        </p>
+      {live.newestBroken && !opening && (
+        <div role="alert" className="mb-3 flex items-start gap-2.5 rounded-xl bg-fail/5 px-4 py-3 text-sm">
+          <span className="mt-0.5"><StatusIcon state="failed" /></span>
+          <div>
+            <p className="font-medium">The newest run could not start any test, so this shows the run before it.</p>
+            <p className="mt-0.5 text-muted">{job?.problem ?? "If the model is out of credits, new runs fail until that is fixed."}</p>
+          </div>
+        </div>
       )}
       <section className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border border-line bg-panel px-5 py-3.5">
         <span className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-semibold ${v.cls}`}><StatusIcon state={v.icon} size={16} />{v.text}</span>
@@ -110,7 +136,7 @@ export default function RunView({ trailId, fresh, regression, initial }: { trail
           {s.todo > 0 && <span className="flex items-center gap-1.5 text-muted"><StatusIcon state="todo" size={15} />{s.todo}</span>}
         </div>
         {live.run && <span className="text-xs text-muted">{ago(live.run.startedAt)}</span>}
-        <RunNow trailId={trailId} goToRun={false} />
+        <RunNow trailId={trailId} goToRun={false} onStart={() => { setStarting(true); void poll().finally(() => setStarting(false)); }} />
       </section>
 
       <div className="mt-4 grid gap-4 lg:h-[calc(100vh-300px)] lg:min-h-[540px] lg:grid-cols-[260px_minmax(0,1fr)]">
@@ -143,6 +169,7 @@ export default function RunView({ trailId, fresh, regression, initial }: { trail
             </div>
           )}
           {showLive ? <LiveFrame url={liveGroup!.streamingUrl} label={`Live: ${liveGroup!.feature}`} />
+            : (opening || waitingForBrowser) && mode === "auto" ? <StartingPanel job={job} />
             : sel ? <ReplayPane card={sel} />
             : <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-line text-sm text-muted">Nothing to show yet.</div>}
 

@@ -27,7 +27,15 @@ export async function trailNumber(trailId: string): Promise<string> {
 
 export function jobStatus(trailId: string) {
   const j = jobs.get(trailId);
-  return j ? { running: j.exitCode === null, exitCode: j.exitCode, log: j.log.slice(-6) } : null;
+  if (!j) return null;
+  // The first line that says why a run went wrong (the last lines are only the summary).
+  const bad = j.log.find((l: string) => /ERRORED|run failed|ApiError|credits/i.test(l));
+  const clean = bad ? bad.replace(/^\d{2}:\d{2}:\d{2}\s+/, "") : null;
+  const problem = !clean ? null
+    : /credits are depleted|"code":\s*402/.test(clean) ? "Gemini is out of credits (402), so requirements cannot be turned into browser goals. Top up the project at AI Studio or use another key."
+    : /429|quota|RESOURCE_EXHAUSTED/.test(clean) ? "Gemini is rate limited or over quota. Try again in a minute or use another key."
+    : clean.slice(0, 240);
+  return { running: j.exitCode === null, exitCode: j.exitCode, log: j.log.slice(-6), problem };
 }
 
 export async function startRun(trailId: string) {

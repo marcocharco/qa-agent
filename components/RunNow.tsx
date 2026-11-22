@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { btn } from "./ui";
 
-export default function RunNow({ trailId, goToRun = true, label = "Run now" }: { trailId: string; goToRun?: boolean; label?: string }) {
+export default function RunNow({ trailId, goToRun = true, label = "Run now", onStart }: { trailId: string; goToRun?: boolean; label?: string; onStart?: () => void }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -15,6 +15,7 @@ export default function RunNow({ trailId, goToRun = true, label = "Run now" }: {
     const res = await fetch(`/api/trails/${trailId}/run`, { method: "POST" });
     setBusy(false);
     if (!res.ok) return setError((await res.json()).error);
+    onStart?.();
     if (goToRun) router.push(`/t/${trailId}`);
   }
 
