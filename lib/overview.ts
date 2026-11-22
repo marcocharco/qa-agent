@@ -97,3 +97,18 @@ export function trailStatus(t: TrailCard): TrailStatus {
 
 const priority: TrailStatus[] = ["running", "failing", "review", "ready", "idle", "merged"];
 export const sortTrails = (ts: TrailCard[]) => [...ts].sort((a, b) => priority.indexOf(trailStatus(a)) - priority.indexOf(trailStatus(b)) || (b.lastRunAt ?? "").localeCompare(a.lastRunAt ?? ""));
+
+const STOP = new Set(["the", "for", "and", "check", "step", "with", "from", "into", "that", "this", "page", "then"]);
+const words = (t: string) => new Set(t.toLowerCase().split(/[^a-z0-9$%.]+/).filter((w) => w.length > 2 && !STOP.has(w)));
+
+/** Which of the test's own steps the agent is on. It names the step when it can; otherwise the best word match, never going backwards. */
+export function currentStep(action: string, steps: string[], from: number): number {
+  // The agent wrapping up means it has done every step.
+  if (/^(finish|finished|complete|completed|submit|report|task completed)\b/i.test(action.replace(/^check \d+( step \d+)?:\s*/i, "").trim())) return Math.max(from, steps.length - 1);
+  const named = /step\s*(\d+)/i.exec(action)?.[1];
+  if (named && Number(named) >= 1 && Number(named) <= steps.length) return Math.max(from, Number(named) - 1);
+  const a = words(action);
+  let best = -1, score = 0;
+  steps.forEach((st, i) => { const n = [...words(st)].filter((w) => a.has(w)).length; if (n > score || (n === score && n > 0 && i < best)) { score = n; best = i; } });
+  return best >= 0 ? Math.max(from, best) : from;
+}

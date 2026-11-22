@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCards, defaultCard, groupByFeature, groupState, shortLabel, sortTrails, splitReason, summarize, trailStatus, verdictOf, type TrailCard } from "./overview";
+import { buildCards, currentStep, defaultCard, groupByFeature, groupState, shortLabel, sortTrails, splitReason, summarize, trailStatus, verdictOf, type TrailCard } from "./overview";
 import type { CheckRow, Live, RequirementRow } from "./queries";
 
 const req = (id: string, o: Partial<RequirementRow> = {}): RequirementRow =>
@@ -71,4 +71,13 @@ describe("trailStatus", () => {
     const sorted = sortTrails([trail({ id: "m", state: "merged" }), trail({ id: "r" }), trail({ id: "f", failed: 1 })]);
     expect(sorted.map((t) => t.id)).toEqual(["f", "r", "m"]);
   });
+});
+
+describe("currentStep", () => {
+  const steps = ["Select the Team plan", "Select monthly billing", "Set the seat count to 10"];
+  it("follows a step the agent names", () => expect(currentStep("CHECK 2 step 3: Increase Team seats to 7", steps, 0)).toBe(2));
+  it("matches by words", () => expect(currentStep("Switch to monthly billing", steps, 0)).toBe(1));
+  it("never goes backwards", () => expect(currentStep("Select the Team plan again", steps, 2)).toBe(2));
+  it("treats wrapping up as the last step", () => expect(currentStep("Finish task with result", steps, 0)).toBe(2));
+  it("stays put when nothing matches", () => expect(currentStep("Understand current page state", steps, 1)).toBe(1));
 });
