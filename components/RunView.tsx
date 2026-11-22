@@ -1,39 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { setStatus } from "@/app/actions";
 import { cleanAction } from "@/lib/collapse";
-import { buildCards, currentStep, defaultCard, groupByFeature, type FeatureGroup, shortLabel, splitReason, summarize, titleCase, verdictOf, type Card, type Verdict } from "@/lib/overview";
-import type { Live, RequirementRow } from "@/lib/queries";
+import { currentStep, defaultCard, groupByFeature, type FeatureGroup, shortLabel, splitReason, titleCase, type Card } from "@/lib/overview";
 import Replay, { type ReplayData } from "./Replay";
 import RerunTest from "./RerunTest";
-import RunNow from "./RunNow";
 import StatusIcon from "./StatusIcon";
-import { btnGhost, seconds } from "./ui";
-
-const verdictUi: Record<Verdict, { text: string; cls: string; icon: "running" | "passed" | "failed" | "review" | "todo" | "errored" }> = {
-  running: { text: "Running", cls: "bg-accent/10 text-accent", icon: "running" },
-  merge: { text: "All clear", cls: "bg-pass/10 text-pass", icon: "passed" },
-  review: { text: "Needs a look", cls: "bg-accent/10 text-accent", icon: "review" },
-  hold: { text: "Blocked", cls: "bg-fail/10 text-fail", icon: "failed" },
-  idle: { text: "Not run yet", cls: "bg-chip text-muted", icon: "todo" },
-  broken: { text: "Run failed", cls: "bg-chip text-muted", icon: "errored" },
-};
-
-type Job = { running: boolean; exitCode: number | null; log: string[]; problem: string | null } | null;
-
-/** How long the run took, or how long it has been going. */
-function Elapsed({ startedAt, finishedAt }: { startedAt: string; finishedAt: string | null }) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (finishedAt) return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, [finishedAt]);
-  const ms = (finishedAt ? +new Date(finishedAt) : now) - +new Date(startedAt);
-  return <span className="text-xs tabular-nums text-muted">{finishedAt ? "Ran for" : "Running for"} {seconds(Math.max(0, ms))}</span>;
-}
+import { type Job, useTrailLive } from "./TrailLive";
+import { btnGhost } from "./ui";
 
 /** Shown from the click on Run now until the first browser streams, so the preview is never a stale replay. */
 function StartingPanel({ job }: { job: Job }) {
@@ -153,28 +129,9 @@ function ReplayPane({ card }: { card: Card }) {
   );
 }
 
-export default function RunView({ trailId, fresh, regression, initial }: { trailId: string; fresh: RequirementRow[]; regression: RequirementRow[]; initial: Live }) {
-  const [live, setLive] = useState(initial);
-  const [job, setJob] = useState<Job>(null);
-  const [starting, setStarting] = useState(false);
-  const poll = useCallback(async () => {
-    try {
-      const d = await (await fetch(`/api/trails/${trailId}/live`, { cache: "no-store" })).json();
-      setLive(d.live);
-      setJob(d.job);
-    } catch { /* the next poll retries */ }
-  }, [trailId]);
-  useEffect(() => {
-    const t = setInterval(poll, 2500);
-    const first = setTimeout(poll, 0);
-    return () => { clearInterval(t); clearTimeout(first); };
-  }, [poll]);
-
-  const cards = useMemo(() => buildCards(fresh, regression, live), [fresh, regression, live]);
+export default function RunView({ trailId }: { trailId: string }) {
+  const { live, job, starting, begin, cards, verdict } = useTrailLive();
   const groups = useMemo(() => groupByFeature(cards), [cards]);
-  const s = summarize(cards);
-  const verdict = verdictOf(cards, live);
-  const v = verdictUi[verdict];
   const [picked, setPicked] = useState<string | null>(null);
   const [mode, setMode] = useState<"auto" | "replay">("auto");
   const [pinned, setPinned] = useState<string | null>(null);
@@ -191,7 +148,6 @@ export default function RunView({ trailId, fresh, regression, initial }: { trail
   // While browsers work, the right column is the step-by-step progress. Once a task is chosen or the run ends, it is the result.
   const progressGroup = liveGroup ?? groups.find((g) => g.state === "running");
   const showProgress = (running || opening) && mode === "auto";
-  const seg = (n: number, cls: string) => n > 0 && <div className={`${cls} transition-all`} style={{ flex: n }} />;
   const { claim, saw } = splitReason(sel?.check?.reason ?? null);
 
   const choose = (c: Card) => {
@@ -210,20 +166,6 @@ export default function RunView({ trailId, fresh, regression, initial }: { trail
           </div>
         </div>
       )}
-      <section className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border border-line bg-panel px-5 py-2.5">
-        <span className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-semibold ${v.cls}`}><StatusIcon state={v.icon} size={16} />{v.text}</span>
-        <div className="flex h-2.5 min-w-[180px] flex-1 overflow-hidden rounded-full bg-chip" role="img" aria-label="Progress">
-          {seg(s.passed, "bg-pass")}{seg(s.failed, "bg-fail")}{seg(s.review, "bg-accent/70")}{seg(s.errored, "bg-muted/50")}{seg(s.running, "bg-accent animate-pulse")}{seg(s.todo, "bg-transparent")}
-        </div>
-        <div className="flex items-center gap-4 text-sm font-medium">
-          {([["passed", s.passed], ["failed", s.failed], ["review", s.review], ["running", s.running]] as const).filter(([, n]) => n > 0).map(([st, n]) => (
-            <span key={st} className="flex items-center gap-1.5"><StatusIcon state={st} size={15} />{n}</span>
-          ))}
-          {s.todo > 0 && <span className="flex items-center gap-1.5 text-muted"><StatusIcon state="todo" size={15} />{s.todo}</span>}
-        </div>
-        {live.run && <Elapsed startedAt={live.run.startedAt} finishedAt={live.run.finishedAt} />}
-        <RunNow trailId={trailId} goToRun={false} running={running || !!job?.running || starting} onStart={() => { setStarting(true); void poll().finally(() => setStarting(false)); }} />
-      </section>
 
       <div className="mt-3 grid items-start gap-3 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_340px]">
         <nav className="min-h-0 overflow-auto rounded-2xl lg:max-h-[calc(100vh-256px)] lg:min-h-[320px] border border-line bg-background p-2" aria-label="Requirements by feature">
@@ -269,7 +211,7 @@ export default function RunView({ trailId, fresh, regression, initial }: { trail
               {claim && <p className="mt-3 text-sm text-muted">{claim}</p>}
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 {sel.state === "proposed" && <button className={btnGhost} onClick={() => void setStatus(sel.req.id, "approved")}>Approve</button>}
-                {sel.state !== "proposed" && sel.state !== "todo" && sel.state !== "running" && <RerunTest trailId={trailId} requirementId={sel.req.id} disabled={running || !!job?.running || starting} onStart={() => { setStarting(true); void poll().finally(() => setStarting(false)); }} />}
+                {sel.state !== "proposed" && sel.state !== "todo" && sel.state !== "running" && <RerunTest trailId={trailId} requirementId={sel.req.id} disabled={running || !!job?.running || starting} onStart={begin} />}
                 {sel.state === "failed" && sel.check && <Link className="ml-auto text-sm font-medium text-accent hover:underline" href={`/t/${trailId}/checks/${sel.check.id}`}>Bug report →</Link>}
               </div>
               {!!sel.req.steps?.length && (

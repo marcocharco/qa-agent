@@ -140,6 +140,12 @@ export async function processTrail(cfg: Config, ref: TrailRef, opts: { only?: st
   const latest = opts.only ? (await db().query("select id from runs where trail_id=$1 and (finished_at is null or exists (select 1 from checks c where c.run_id = runs.id)) order by started_at desc limit 1", [trail.id])).rows[0]?.id as string | undefined : undefined;
   const runId = latest ?? randomUUID();
   if (latest) {
+    // Checks left without any outcome by an earlier rerun that was stopped or crashed would show as running again the moment
+    // the run reopens, and look like everything is being rerun. They never finished, so they go.
+    const dead = "select id from checks where run_id=$1 and passed is null and classification is null";
+    await db().query(`delete from steps where check_id in (${dead})`, [runId]);
+    await db().query(`delete from bug_reports where check_id in (${dead})`, [runId]);
+    await db().query("delete from checks where run_id=$1 and passed is null and classification is null", [runId]);
     const old = "select id from checks where run_id=$1 and requirement_id = any($2)";
     await db().query(`delete from steps where check_id in (${old})`, [runId, reqs.map((r) => r.id)]);
     await db().query(`delete from bug_reports where check_id in (${old})`, [runId, reqs.map((r) => r.id)]);

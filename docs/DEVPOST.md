@@ -15,7 +15,7 @@ ArcherFish reads an Entire Trail and its agent sessions, extracts the requiremen
 ## Honest notes
 - The demo's chat history is scripted: we wrote the developer prompts and ran real headless Claude Code sessions on them, so the code, the bugs and the Entire checkpoints are real, but the developer's messages are ours.
 - Agents are not perfectly reliable. In our runs a browser agent sometimes returned no result and once reported the expected value instead of what the page showed. A pass is now checked against the last screenshot, an empty session is rerun, and a bug needs two agreeing failures. We caught three of the four planted bugs in every full run and the fourth in some.
-- Runs are limited by TinyFish's default concurrency of two browsers.
+- Runs are limited by our TinyFish concurrency of five browsers.
 
 ## What's next
 Publishing the report into the pull request, running automatically on every push, and an eval of TinyFish against a general browser agent on the same requirements.

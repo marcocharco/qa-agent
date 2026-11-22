@@ -5,7 +5,7 @@ Read `SPEC.md` (status, decisions) and `README.md` (how to run). One agent build
 ## Facts
 - Demo repo: `marcocharco/acme-pricing-demo`, local clone `/Users/marco/Developer/acme-pricing-demo`. Trail #3 is merged (base pricing), Trail #4 is open (annual billing and volume pricing, branch `feat/annual-volume`).
 - Buggy site (`TARGET_URL`): https://acme-pricing-demo.vercel.app. Fixed site (`TARGET_CONTROL_URL`): https://acme-pricing-demo-fixed.vercel.app (branch `feat/annual-volume-fixed`). Verify with `demo/verify/check.mjs <url> --expect buggy|correct`.
-- `.env.local`: `ENTIRE_PROJECT=gh/marcocharco`, `TARGET_REPO_DIR` (the clone above), `TARGET_URL`, `TARGET_CONTROL_URL`, `CONCURRENCY=2` (TinyFish default, not raised). Database name is `receipts` (not renamed).
+- `.env.local`: `ENTIRE_PROJECT=gh/marcocharco`, `TARGET_REPO_DIR` (the clone above), `TARGET_URL`, `TARGET_CONTROL_URL`, `CONCURRENCY=5` (the TinyFish limit on this account). Database name is `receipts` (not renamed).
 - The finding marker is `[archerfish:<requirement id>]`. Findings filed earlier under `[receipts:...]` are not matched.
 - Answer key for the planted bugs: `demo/ANSWER_KEY.md` (A and D in `annualQuote`, B in the strict `>`, C in `PricingCard` decrease; prompts 02/05, 02/08, 02/07, 02/09).
 

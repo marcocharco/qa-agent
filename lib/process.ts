@@ -61,5 +61,9 @@ export async function stopRun(trailId: string) {
     job.log.push("Stopped by user");
   }
   const { rows } = await db().query("update runs set finished_at=now() where trail_id=$1 and finished_at is null returning id", [trailId]);
-  if (rows.length) await db().query("update checks set streaming_url=null where run_id = any($1)", [rows.map((r) => r.id)]);
+  if (rows.length) {
+    const ids = rows.map((r) => r.id);
+    // What was in flight did not finish. Marked, so it never shows as running again.
+    await db().query("update checks set streaming_url=null, now_text=null, classification='test_problem', reason='Stopped before this test finished' where run_id = any($1) and passed is null and classification is null", [ids]);
+  }
 }
