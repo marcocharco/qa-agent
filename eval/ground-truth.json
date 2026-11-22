@@ -1,0 +1,18 @@
+{
+  "builds": {
+    "buggy": "https://acme-pricing-demo.vercel.app",
+    "fixed": "https://acme-pricing-demo-fixed.vercel.app"
+  },
+  "note": "expect is what a correct tester must report. evidence lists strings a truthful quote of the page contains on that build (any one is enough).",
+  "tasks": [
+    { "id": "A", "bug": true, "match": "SAVE10 works on Team in annual mode%", "expect": { "buggy": "fail", "fixed": "pass" }, "evidence": { "buggy": ["$835.20"], "fixed": ["$751.68", "-$83.52"] } },
+    { "id": "B", "bug": true, "match": "Team gets 5% off the subtotal at 10%", "expect": { "buggy": "fail", "fixed": "pass" }, "evidence": { "buggy": ["$290.00"], "fixed": ["$275.50", "-$14.50"] } },
+    { "id": "C", "bug": true, "match": "Team needs at least 3 seats%", "expect": { "buggy": "fail", "fixed": "pass" }, "evidence": { "buggy": ["$58.00"], "fixed": ["$87.00"] } },
+    { "id": "D", "bug": true, "match": "Annual comes first%", "expect": { "buggy": "fail", "fixed": "pass" }, "evidence": { "buggy": ["$798.00", "-$114.00"], "fixed": ["$820.80", "-$91.20"] } },
+    { "id": "E", "bug": false, "match": "Pro at 5 seats on annual billing%", "expect": { "buggy": "pass", "fixed": "pass" }, "evidence": { "buggy": ["$912.00"], "fixed": ["$912.00"] } },
+    { "id": "F", "bug": false, "match": "Team at 9 seats monthly%", "expect": { "buggy": "pass", "fixed": "pass" }, "evidence": { "buggy": ["$261.00"], "fixed": ["$261.00"] } },
+    { "id": "G", "bug": false, "match": "Pro at 5 seats monthly%", "expect": { "buggy": "pass", "fixed": "pass" }, "evidence": { "buggy": ["$95.00"], "fixed": ["$95.00"] } },
+    { "id": "H", "bug": false, "match": "SAVE10 takes 10% off the Team plan on monthly%", "expect": { "buggy": "pass", "fixed": "pass" }, "evidence": { "buggy": ["$78.30", "-$8.70"], "fixed": ["$78.30", "-$8.70"] } },
+    { "id": "I", "bug": false, "match": "When Apply is clicked%", "expect": { "buggy": "pass", "fixed": "pass" }, "evidence": { "buggy": ["SAVE10 applied"], "fixed": ["SAVE10 applied"] } }
+  ]
+}
