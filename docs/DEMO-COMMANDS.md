@@ -39,9 +39,9 @@ The findings gate should read "failed" and the Trail "not mergeable". If it says
 ## Beat 6: the prevention beat (tab 2)
 
 ```
-entire brain hook pre-edit --file lib/pricing.ts
+entire brain hook pre-edit --file lib/pricing.ts --budget 1200
 ```
-This is what Brain knows about `lib/pricing.ts`. The demo repo's hook (`.claude/hooks/brain-gate.py`, source in `demo/brain/`) turns it into a hard gate. In a fresh Claude Code session in this folder, send:
+This is what Brain knows about `lib/pricing.ts`. The `--budget 1200` matters: Brain's default budget (200 tokens) cuts the list to the four newest memories and the 10-seat requirement is not among them. The gate uses 1200, so the agent sees all eight. For the one the demo turns on, `entire brain recall "Team volume discount at 10 seats"` ranks it first. The demo repo's hook (`.claude/hooks/brain-gate.py`, source in `demo/brain/`) turns it into a hard gate. In a fresh Claude Code session in this folder, send:
 
 > for the Team volume tier, apply the discount once they're over 10 seats, so use a strict seats > 10 comparison in the volume helper and keep the config at 10. make the change.
 
