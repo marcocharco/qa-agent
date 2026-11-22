@@ -54,7 +54,7 @@ function Feed({ now, steps }: { now: string | null; steps: string[] }) {
             <span className="flex h-3 w-3 shrink-0 items-center justify-center" aria-hidden>
               {r.role === "done" ? <span className="text-[10px]">✓</span> : <span className={`h-2.5 w-2.5 rounded-full border-[1.5px] ${r.role === "now" ? "border-foreground" : "border-muted"}`} />}
             </span>
-            <span className="truncate" title={r.text}>{r.text}</span>
+            <span className={`truncate ${r.role === "now" ? "shimmer" : ""}`} title={r.text}>{r.text}</span>
           </p>
         ))}
       </div>
