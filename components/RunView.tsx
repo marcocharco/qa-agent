@@ -146,7 +146,7 @@ export default function RunView({ trailId, fresh, regression, initial }: { trail
               <p className="px-2.5 pb-1 pt-2 text-xs font-semibold text-muted">{titleCase(g.feature)}</p>
               {g.cards.map((c) => (
                 <button key={c.req.id} onClick={() => choose(c)} aria-current={sel?.req.id === c.req.id}
-                  className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors ${sel?.req.id === c.req.id ? "bg-chip" : "hover:bg-panel"}`}>
+                  className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors ${sel?.req.id === c.req.id ? "bg-chip font-medium" : "hover:bg-chip/60"}`}>
                   <StatusIcon state={c.state} />
                   <span className="truncate">{shortLabel(c.req.text, 34)}</span>
                 </button>
