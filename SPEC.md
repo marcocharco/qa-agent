@@ -287,7 +287,7 @@ The MVP is one complete Trail loop: push, extract, approve, run, fail, report, b
 
 Nice-to-have, only if time remains: nightly scheduled regression run with a morning report (the "AI employee" framing), Playwright repro export, exploratory mode.
 
-**Decided against:** Gemini screenshot second-opinion verifier. Gemini stays at four jobs, so the Gemini prize is a lower priority and not optimized for.
+**Reversed (Nov 22):** a Gemini screenshot check on every pass. In a real run the agent reported "Total: $87.00" where its own screenshot showed $58.00 (bug C), a false pass the observed-text rule cannot catch. Only a visible contradiction turns a pass into a failure (`lib/verifyPass.ts`).
 
 **Out of scope:** auth-protected targets, Jira/GitHub API integrations, auto-launching Claude Code fixes, multi-repo Trails, hosted deployment of ArcherFish itself.
 

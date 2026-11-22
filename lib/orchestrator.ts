@@ -12,10 +12,11 @@ import { decideFindings, type CheckResult } from "./findings";
 import { runFeature } from "./tinyfish";
 import { parseTranscript } from "./transcript";
 import { triageCheck } from "./triage";
+import { verifyPass } from "./verifyPass";
 import { gaveNoVerdict, toFeatureVerdicts, type Verdict } from "./verdict";
 import { needsSecondRun, reconcile } from "./confirm";
 import { recommend } from "./recommendation";
-import { saveReplay } from "./replay";
+import { saveReplay, segmentSteps } from "./replay";
 import type { CheckRun } from "./tinyfish";
 
 const execGit = promisify(execFile);
@@ -192,7 +193,14 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
         await db().query("update checks set streaming_url=null where id = any($1)", [ids]);
         // Download the screenshots and recording right away, the video link expires. A failure here never loses a verdict.
         const replay = run.runId ? await saveReplay(run.runId).catch((e) => { cfg.log?.(`replay not saved: ${String(e).slice(0, 100)}`); return null; }) : null;
-        return { run, replay, verdicts: toFeatureVerdicts(run, items.length) };
+        // A pass is only believed if the check's last screenshot does not contradict what the agent says it saw.
+        const steps = replay?.steps ?? [];
+        const verdicts = await Promise.all(toFeatureVerdicts(run, items.length).map((v, i) => {
+          const seg = segmentSteps(steps.map((x) => x.action), i + 1);
+          const file = [...steps.slice(seg.start, seg.end + 1)].reverse().find((x) => x.file)?.file ?? null;
+          return verifyPass(v, file, v.reason);
+        }));
+        return { run, replay, verdicts };
       };
       const attempt = (run: CheckRun) => ({ runId: run.runId, status: run.status, error: run.error, result: run.result, streamingUrl: run.streamingUrl });
       const first = await session(compiled, "");
