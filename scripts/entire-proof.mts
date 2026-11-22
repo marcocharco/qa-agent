@@ -14,12 +14,15 @@ import { parseTranscript } from "../lib/transcript";
 const run = promisify(execFile);
 const repo = process.env.TARGET_REPO_DIR!;
 const project = process.env.ENTIRE_PROJECT!;
-const trail = process.argv[2] ?? "4";
+const summary = process.argv.includes("--summary");
+const trail = process.argv.slice(2).find((a) => /^\d+$/.test(a)) ?? "4";
+// A pipe that closes early (`| head`) is not an error.
+process.stdout.on("error", () => {});
 const sh = async (cmd: string, args: string[], cwd = repo) => {
   try { return (await run(cmd, args, { cwd, maxBuffer: 64 * 1024 * 1024 })).stdout.trim(); } catch (e) { return `ERROR ${String(e).slice(0, 200)}`; }
 };
 const out: string[] = [];
-const say = (...l: string[]) => { out.push(...l); console.log(l.join("\n")); };
+const say = (...l: string[]) => { out.push(...l); if (!summary) console.log(l.join("\n")); };
 const cell = (s: string, n = 90) => s.replace(/\s+/g, " ").replace(/\|/g, "/").slice(0, n);
 
 say(`# Entire proof`, "", `Generated ${new Date().toISOString()} by \`scripts/entire-proof.mts\`. Everything below is read live from the Entire CLI in the demo repo (\`${repo}\`), then checked against what ArcherFish stored. Re-run any command yourself in that folder.`, "");
@@ -140,5 +143,9 @@ else {
 }
 
 await writeFile("docs/ENTIRE-PROOF.md", out.join("\n") + "\n");
-console.log("\nwritten to docs/ENTIRE-PROOF.md");
+if (summary) {
+  // The headline results only, for a terminal pane: section titles and the lines that carry a number or a verdict.
+  console.log(out.filter((l) => /^## |^\*\*|^\| (Bug|Control)|Mergeable|memories/.test(l)).map((l) => l.replace(/^## /, "\n== ")).join("\n"));
+}
+console.log("\nfull report: docs/ENTIRE-PROOF.md");
 await closeDb();
