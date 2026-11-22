@@ -119,6 +119,31 @@ Status (Nov 21, late): items 1 to 6 are implemented and committed on `main`. Not
 
 Findings from the first live runs on the demo Trail (Nov 21): the agent echoed the expected values from the goal and passed a real bug (fixed by requiring quoted observations), misread a page value once, and silently dropped checks in a multi-check session. These are the reasons for item 1.
 
+## Dashboard v2: agreed features (Nov 21, after the prototype round)
+
+The first dashboard stacked everything vertically, so a visitor did not know what to look at. Decisions after four layouts were compared (the "Focus" layout won):
+
+**Two views, two jobs**
+
+1. **Run view (the "Focus" layout).** Watch the agent work and read the outcome, mostly visually and not through text.
+   - A task list grouped by feature, short labels, and a status icon on each task: spinner (running), check (pass), cross (fail), flag (flaky, needs a look), dash (not run), warning (no verdict).
+   - The live browser preview stays the main area. It follows the active feature session, with small session thumbnails (each with its status icon) to switch or pin one.
+   - Page level state is a segmented progress bar and one colored verdict badge (green, red, amber). No status sentence.
+2. **Requirements view.** Review and edit in aggregate: a table grouped by feature with status, confidence and source, the chat quote behind each row, inline edit, approve, reject, bulk approve of high confidence asks, add your own, drift shown old against new with "Approve change", untestable asks greyed out with the reason, coverage gaps.
+
+**Review after a run is a replay of what went wrong.** For now, reviewing results means replaying the failed and flaky checks: the steps the agent took as a filmstrip with its action text and duration, the failing step highlighted, expected against what it saw, and the recording. Everything else (editing requirements) lives in the Requirements view.
+
+**Flow:** push, extract, (optional) review, run, replay failures, fix, re-run only the failed checks plus the regression suite, gate opens, merge happens in Entire. Approved requirements then join the regression suite and Brain.
+
+**Decisions**
+- **Runs do not wait for approval.** Unreviewed requirements run, but their failures are non-blocking until a human approves; approval is what makes a failure block the merge. (Needs checking: whether Entire can change a finding's severity, otherwise the finding is re-filed on approval.)
+- **No merge from the app.** Receipts shows the gate status only. Merging stays in Entire.
+- **Trail home page:** a list of Trails as status cards (needs review, running, failing, ready to merge).
+
+**Replay data (verified Nov 21).** `GET /v1/runs/{id}` on a finished run returns `steps` (id, timestamp, action, duration, screenshot URL) and a `video_url`. The screenshot is fetched per step from `/v1/runs/{id}/steps/{stepId}/screenshot`. The `video_url` is presigned and expires, so the orchestrator must download the screenshots and the video as soon as a run ends, then store the paths in `steps.screenshot_path` and `checks.video_path`. The SDK's typed run object hides `steps` and `video_url`, so call the REST endpoint directly with the API key.
+
+**Build order:** 1) capture replay data at run end, 2) replay view for failed and flaky checks, 3) Run view with status icons and session switching, 4) Requirements view, 5) Trail home page, 6) severity by approval.
+
 ## Prize alignment
 
 - **Entire:** uses Trails (trigger, gate, merge recommendation), Sessions (requirement source), Brain (write on approve, recall in the prevention beat), Graph (token-savings measurement) and `why`. Receipts itself is built on Entire, with a Trail per feature and sessions captured.
