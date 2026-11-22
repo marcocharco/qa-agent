@@ -1,6 +1,6 @@
 # Entire proof
 
-Generated 2026-11-22T09:11:03.304Z by `scripts/entire-proof.mts`. Everything below is read live from the Entire CLI in the demo repo (`/Users/marco/Developer/acme-pricing-demo`), then checked against what ArcherFish stored. Re-run any command yourself in that folder.
+Generated 2026-11-22T09:11:18.533Z by `scripts/entire-proof.mts`. Everything below is read live from the Entire CLI in the demo repo (`/Users/marco/Developer/acme-pricing-demo`), then checked against what ArcherFish stored. Re-run any command yourself in that folder.
 
 ## 1. Entire is installed and wired to the repo
 
