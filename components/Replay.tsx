@@ -17,7 +17,14 @@ export type ReplayData = {
 const src = (file: string) => `/api/replay/${file}`;
 
 /** What the agent did, one frame per step, opening on the moment it went wrong. */
-export default function Replay({ r, failing }: { r: ReplayData; failing: boolean }) {
+export default function Replay({ r, failing, checkId }: { r: ReplayData; failing: boolean; checkId?: string }) {
+  const [mark, setMark] = useState<{ file: string; box: number[] | null; label: string } | null>(null);
+  useEffect(() => {
+    if (!failing || !checkId) return;
+    let stop = false;
+    fetch(`/api/checks/${checkId}/highlight`).then((x) => x.json()).then((d) => { if (!stop) setMark(d.highlight); }).catch(() => {});
+    return () => { stop = true; };
+  }, [failing, checkId]);
   // Logical steps only: repeated clicks and back-to-back page reads collapse into one.
   const frames = useMemo(() => collapseSteps(r.steps.slice(r.start, r.end + 1)), [r]);
   const last = Math.max(0, frames.length - 1);
@@ -58,6 +65,12 @@ export default function Replay({ r, failing }: { r: ReplayData; failing: boolean
             {f.file ? (
               <img src={src(f.file)} alt={f.label} className="h-full w-full object-contain" />
             ) : <div className="flex h-full items-center justify-center text-sm text-muted">No screenshot for this step</div>}
+            {failing && mark?.box && f.file === mark.file && (
+              <div className="pointer-events-none absolute rounded-md border-2 border-fail bg-fail/10 shadow-[0_0_0_3px_rgba(220,38,38,0.25)]"
+                style={{ top: `${mark.box[0] / 10}%`, left: `${mark.box[1] / 10}%`, height: `${(mark.box[2] - mark.box[0]) / 10}%`, width: `${(mark.box[3] - mark.box[1]) / 10}%` }}>
+                {mark.label && <span className={`absolute left-0 whitespace-nowrap ${mark.box[2] > 850 ? "bottom-full mb-1" : "top-full mt-1"} rounded-md bg-fail px-2 py-0.5 text-xs font-medium text-white`}>{mark.label}</span>}
+              </div>
+            )}
             {failing && i === last && <span className="absolute left-3 top-3 rounded-full bg-fail px-2.5 py-1 text-xs font-medium text-white">Where it went wrong</span>}
           </div>
           <div className="flex items-center justify-between gap-3 px-5 py-3">

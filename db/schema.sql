@@ -99,3 +99,6 @@ alter table checks add column if not exists session_pos int;
 -- Compiled browser goal per requirement, reused until the requirement text or the compile prompt changes.
 alter table requirements add column if not exists compiled jsonb;
 alter table requirements add column if not exists compiled_key text;
+
+-- Where on the evidence screenshot the wrong value shows, found once by a vision model: {file, box:[ymin,xmin,ymax,xmax] (0-1000), label}.
+alter table checks add column if not exists highlight jsonb;

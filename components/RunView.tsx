@@ -61,7 +61,7 @@ function ReplayPane({ card }: { card: Card }) {
     return () => { stop = true; };
   }, [id]);
   const mine = data?.id === id ? data : null;
-  if (mine?.replay) return <div className="min-h-0 flex-1 overflow-auto"><Replay key={id} r={mine.replay} failing={mine.failing} /></div>;
+  if (mine?.replay) return <div className="min-h-0 flex-1 overflow-auto"><Replay key={id} r={mine.replay} failing={mine.failing} checkId={id} /></div>;
   return (
     <div className="flex min-h-[260px] flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-line px-6 text-center text-sm text-muted">
       <StatusIcon state={card.state} size={28} />

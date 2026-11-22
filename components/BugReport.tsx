@@ -84,7 +84,7 @@ export default function BugReport({ check, findingOpen }: { check: CheckDetail; 
         <p className="mt-3 text-[15px] leading-relaxed text-muted">{c.reason}</p>
       </section>
 
-      {level >= 2 && c.replay && <div className="mt-6"><Replay r={c.replay} failing={c.status === "failed"} /></div>}
+      {level >= 2 && c.replay && <div className="mt-6"><Replay r={c.replay} failing={c.status === "failed"} checkId={c.id} /></div>}
 
       {level >= 2 && (
         <section className="mt-6 grid gap-6 md:grid-cols-[1.2fr_1fr]">

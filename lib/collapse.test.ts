@@ -14,9 +14,13 @@ describe("collapseSteps", () => {
   it("counts repeats when there is no starting number", () => {
     expect(collapseSteps(fr("Increase Team seats to 4", "Increase Team seats to 5"))[0].label).toBe("Increase Team seats to 5 (×2)");
   });
-  it("merges consecutive looks and keeps the last label", () => {
-    const g = collapseSteps(fr("Select the Team plan", "Check if Team plan is selected after click", "Visual check of page", "Set seats to 9"));
-    expect(g.map((x) => x.label)).toEqual(["Select the Team plan", "Visual check of page", "Set seats to 9"]);
+  it("drops looks in the middle and keeps the final one as the result", () => {
+    const g = collapseSteps(fr("Understand current page state", "Select the Team plan", "Check if Team plan is selected after click", "Set seats to 9", "Check final state", "Recheck final state"));
+    expect(g.map((x) => x.label)).toEqual(["Select the Team plan", "Set seats to 9", "Read the result"]);
+    expect(g[2].file).toBe("f5.png");
+  });
+  it("drops the agent wrapping up", () => {
+    expect(collapseSteps(fr("Select Team plan", "Check final state", "Finish result", "Task completed")).map((g) => g.label)).toEqual(["Select Team plan", "Read the result"]);
   });
   it("keeps different actions apart and strips check bookkeeping", () => {
     expect(collapseSteps(fr("Reload page for CHECK 2 fresh state", "Select Team plan for Check 2")).map((g) => g.label)).toEqual(["Reload page fresh state", "Select Team plan"]);
