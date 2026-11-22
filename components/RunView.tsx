@@ -36,15 +36,15 @@ function StartingPanel({ job }: { job: Job }) {
 
 function LiveFrame({ url, label }: { url: string | null; label: string }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-panel">
+    <div className="flex flex-col overflow-hidden rounded-2xl border border-line bg-panel">
       <div className="flex items-center justify-between gap-3 border-b border-line bg-background px-4 py-2.5 text-xs">
         <span className="flex items-center gap-2 font-medium"><StatusIcon state="running" size={14} />{label}</span>
         {url?.startsWith("http") && <a className="font-medium text-accent hover:underline" href={url} target="_blank" rel="noreferrer">Open in a tab ↗</a>}
       </div>
       {url?.startsWith("http") ? (
-        <iframe src={url} title={`Live browser: ${label}`} className="min-h-0 w-full flex-1 bg-panel" />
+        <iframe src={url} title={`Live browser: ${label}`} className="aspect-video w-full bg-panel" />
       ) : (
-        <div className="flex flex-1 items-center justify-center text-sm text-muted">Starting the browser...</div>
+        <div className="flex aspect-video items-center justify-center text-sm text-muted">Starting the browser...</div>
       )}
     </div>
   );
@@ -139,8 +139,8 @@ export default function RunView({ trailId, fresh, regression, initial }: { trail
         <RunNow trailId={trailId} goToRun={false} running={running || !!job?.running || starting} onStart={() => { setStarting(true); void poll().finally(() => setStarting(false)); }} />
       </section>
 
-      <div className="mt-4 grid gap-4 lg:h-[calc(100vh-300px)] lg:min-h-[540px] lg:grid-cols-[260px_minmax(0,1fr)]">
-        <nav className="min-h-0 overflow-auto rounded-2xl border border-line bg-background p-2" aria-label="Requirements by feature">
+      <div className="mt-4 grid items-start gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <nav className="min-h-0 overflow-auto rounded-2xl lg:max-h-[calc(100vh-300px)] lg:min-h-[320px] border border-line bg-background p-2" aria-label="Requirements by feature">
           {groups.map((g) => (
             <div key={g.feature} className="mb-2">
               <p className="flex items-center gap-2 px-2.5 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted"><StatusIcon state={g.state} size={13} />{g.feature}</p>
@@ -156,7 +156,7 @@ export default function RunView({ trailId, fresh, regression, initial }: { trail
           {!cards.length && <p className="px-3 py-8 text-center text-sm text-muted">No requirements yet. Add some in Requirements.</p>}
         </nav>
 
-        <div className="flex min-h-0 flex-col gap-3">
+        <div className="flex min-w-0 flex-col gap-3">
           {running && groups.some((g) => g.streamingUrl) && (
             <div className="flex flex-wrap items-center gap-2" aria-label="Browser sessions">
               {groups.filter((g) => g.streamingUrl).map((g) => (
