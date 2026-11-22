@@ -15,7 +15,7 @@ export default function RunNow({ trailId, goToRun = true, label = "Run now" }: {
     const res = await fetch(`/api/trails/${trailId}/run`, { method: "POST" });
     setBusy(false);
     if (!res.ok) return setError((await res.json()).error);
-    if (goToRun) router.push(`/t/${trailId}/run`);
+    if (goToRun) router.push(`/t/${trailId}`);
   }
 
   return (

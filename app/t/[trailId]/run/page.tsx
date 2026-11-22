@@ -1,7 +1,6 @@
-import LiveGrid from "@/components/LiveGrid";
-import { getLive } from "@/lib/queries";
+import { redirect } from "next/navigation";
 
-export default async function RunPage({ params }: { params: Promise<{ trailId: string }> }) {
-  const { trailId } = await params;
-  return <LiveGrid trailId={trailId} initial={await getLive(trailId)} />;
+// The run view is the Trail's home now. Old links keep working.
+export default async function RunRedirect({ params }: { params: Promise<{ trailId: string }> }) {
+  redirect(`/t/${(await params).trailId}`);
 }

@@ -110,11 +110,22 @@ export type CheckRow = {
   durationMs: number | null;
 };
 export type RunRow = { id: string; headSha: string; startedAt: string; finishedAt: string | null };
-export type Live = { run: RunRow | null; checks: CheckRow[] };
+export type Live = {
+  run: RunRow | null;
+  checks: CheckRow[];
+  /** The newest run ended before any test started (for example the model had no credits). The run shown is the one before it. */
+  newestBroken: boolean;
+};
 
 export async function getLive(trailId: string): Promise<Live> {
-  const run = (await db().query("select id, head_sha, started_at, finished_at from runs where trail_id = $1 order by started_at desc limit 1", [trailId])).rows[0];
-  if (!run) return { run: null, checks: [] };
+  const runs = (await db().query(
+    "select u.id, u.head_sha, u.started_at, u.finished_at, (select count(*)::int from checks c where c.run_id = u.id) as n from runs u where u.trail_id = $1 order by u.started_at desc limit 8",
+    [trailId],
+  )).rows;
+  if (!runs.length) return { run: null, checks: [], newestBroken: false };
+  // A run still open may not have checks yet (it is compiling). A finished run with none never tested anything.
+  const broken = (r: (typeof runs)[number]) => r.finished_at && r.n === 0;
+  const run = broken(runs[0]) ? (runs.find((r) => !broken(r)) ?? runs[0]) : runs[0];
   const { rows } = await db().query(
     `select c.id, c.requirement_id, r.text, c.passed, c.reason, c.classification, c.failed_step, c.streaming_url, c.duration_ms
      from checks c join requirements r on r.id = c.requirement_id where c.run_id = $1 order by r.text`,
@@ -123,6 +134,7 @@ export async function getLive(trailId: string): Promise<Live> {
   const finished = !!run.finished_at;
   return {
     run: { id: run.id, headSha: run.head_sha, startedAt: run.started_at.toISOString(), finishedAt: run.finished_at?.toISOString() ?? null },
+    newestBroken: run.id !== runs[0].id || (broken(runs[0]) && !rows.length),
     checks: rows.map((c) => ({
       id: c.id, requirementId: c.requirement_id, requirement: c.text, status: checkStatus(c, finished), reason: c.reason,
       failedStep: c.failed_step, streamingUrl: c.streaming_url, durationMs: c.duration_ms,

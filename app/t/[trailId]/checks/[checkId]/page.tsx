@@ -22,7 +22,7 @@ export default async function BugReportPage({ params }: { params: Promise<{ trai
   if (!check || check.trailId !== trailId) notFound();
   return (
     <>
-      <Link href={`/t/${trailId}/run`} className="text-sm text-muted hover:text-foreground">← Back to the run</Link>
+      <Link href={`/t/${trailId}`} className="text-sm text-muted hover:text-foreground">← Back to the run</Link>
       <div className="mt-4"><BugReport check={check} findingOpen={await findingOpen(trailId, check.findingId)} /></div>
     </>
   );

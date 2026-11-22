@@ -29,7 +29,7 @@ export default async function History({ params }: { params: Promise<{ trailId: s
   if (!runs.length) return <p className="rounded-xl border border-dashed border-line px-4 py-6 text-sm text-muted">No runs for this Trail yet.</p>;
   return (
     <>
-    <Link href={`/t/${trailId}/run`} className="mb-6 inline-block text-sm text-muted hover:text-foreground">← Back to the run</Link>
+    <Link href={`/t/${trailId}`} className="mb-6 inline-block text-sm text-muted hover:text-foreground">← Back to the run</Link>
     <PassRateChart runs={runs} />
     <div className="overflow-x-auto">
       <table className="w-full min-w-[40rem] text-left text-sm">

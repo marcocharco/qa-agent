@@ -7,7 +7,8 @@ import type { TrailRow } from "@/lib/queries";
 export function TrailPicker({ trails, current }: { trails: Pick<TrailRow, "id" | "title" | "state">[]; current: string }) {
   const router = useRouter();
   const pathname = usePathname();
-  const tab = pathname.split("/")[3] === "run" ? "/run" : "";
+  const seg = pathname.split("/")[3];
+  const tab = seg === "requirements" || seg === "history" ? `/${seg}` : "";
   return (
     <select
       aria-label="Trail"
@@ -22,20 +23,18 @@ export function TrailPicker({ trails, current }: { trails: Pick<TrailRow, "id" |
   );
 }
 
-export function Steps({ trailId }: { trailId: string }) {
+export function TrailTabs({ trailId }: { trailId: string }) {
   const pathname = usePathname();
-  const onRequirements = pathname === `/t/${trailId}`;
+  const seg = pathname.split("/")[3];
   const items = [
-    { href: `/t/${trailId}`, label: "Requirements", on: onRequirements },
-    { href: `/t/${trailId}/run`, label: "Live run", on: !onRequirements },
+    { href: `/t/${trailId}`, label: "Run", on: !seg || seg === "run" || seg === "checks" },
+    { href: `/t/${trailId}/requirements`, label: "Requirements", on: seg === "requirements" },
+    { href: `/t/${trailId}/history`, label: "History", on: seg === "history" },
   ];
   return (
     <nav className="flex gap-6 border-b border-line">
-      {items.map((i, n) => (
-        <Link key={i.href} href={i.href} className={`-mb-px flex items-center gap-2 border-b-2 pb-3 text-sm font-medium ${i.on ? "border-foreground" : "border-transparent text-muted hover:text-foreground"}`}>
-          <span className={`flex h-5 w-5 items-center justify-center rounded-full text-xs ${i.on ? "bg-foreground text-background" : "bg-chip"}`}>{n + 1}</span>
-          {i.label}
-        </Link>
+      {items.map((i) => (
+        <Link key={i.href} href={i.href} className={`-mb-px border-b-2 pb-3 text-sm font-medium ${i.on ? "border-foreground" : "border-transparent text-muted hover:text-foreground"}`}>{i.label}</Link>
       ))}
     </nav>
   );
