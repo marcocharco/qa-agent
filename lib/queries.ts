@@ -42,15 +42,24 @@ export type RequirementRow = {
   feature: string | null;
   /** The earlier requirement this one changes (drift). It stays active until this one is approved. */
   supersedes: { id: string; text: string } | null;
+  /** What the test does, as a person would: its own steps. Empty until the requirement has been compiled. */
+  steps?: string[];
 };
 
 const reqCols = `r.id, r.trail_id, t.title as trail_title, r.text, r.type, r.confidence, r.testable, r.untestable_reason,
-  r.status, r.source_kind, r.quote, r.edited_by_human, r.feature, s.id as sup_id, s.text as sup_text`;
+  r.status, r.source_kind, r.quote, r.edited_by_human, r.feature, r.compiled, s.id as sup_id, s.text as sup_text`;
+/** The steps of a compiled requirement, as a person would do them. */
+export const specSteps = (compiled: unknown): string[] => {
+  const steps = (compiled as { spec?: { steps?: unknown } } | null)?.spec?.steps;
+  return Array.isArray(steps) ? steps.map(String) : [];
+};
+
 const toReq = (r: Record<string, never>): RequirementRow => ({
   id: r.id, trailId: r.trail_id, trailTitle: r.trail_title, text: r.text, type: r.type, confidence: r.confidence,
   testable: r.testable, untestableReason: r.untestable_reason, status: r.status, sourceKind: r.source_kind,
   quote: r.quote, edited: r.edited_by_human, feature: r.feature,
   supersedes: r.sup_id ? { id: r.sup_id, text: r.sup_text } : null,
+  steps: specSteps((r as Record<string, unknown>).compiled),
 });
 
 /** New: this Trail's own asks. Regression: approved asks of other merged Trails (what the orchestrator also runs). */
@@ -110,6 +119,8 @@ export type CheckRow = {
   failedStep: number | null;
   streamingUrl: string | null;
   durationMs: number | null;
+  /** The agent's latest action while its session runs */
+  now?: string | null;
 };
 export type RunRow = { id: string; headSha: string; startedAt: string; finishedAt: string | null };
 export type Live = {
@@ -129,7 +140,7 @@ export async function getLive(trailId: string): Promise<Live> {
   const broken = (r: (typeof runs)[number]) => r.finished_at && r.n === 0;
   const run = broken(runs[0]) ? (runs.find((r) => !broken(r)) ?? runs[0]) : runs[0];
   const { rows } = await db().query(
-    `select c.id, c.requirement_id, r.text, c.passed, c.reason, c.classification, c.failed_step, c.streaming_url, c.duration_ms
+    `select c.id, c.requirement_id, r.text, c.passed, c.reason, c.classification, c.failed_step, c.streaming_url, c.duration_ms, c.now_text
      from checks c join requirements r on r.id = c.requirement_id where c.run_id = $1 order by r.text`,
     [run.id],
   );
@@ -139,7 +150,7 @@ export async function getLive(trailId: string): Promise<Live> {
     newestBroken: run.id !== runs[0].id || (broken(runs[0]) && !rows.length),
     checks: rows.map((c) => ({
       id: c.id, requirementId: c.requirement_id, requirement: c.text, status: checkStatus(c, finished), reason: c.reason,
-      failedStep: c.failed_step, streamingUrl: c.streaming_url, durationMs: c.duration_ms,
+      failedStep: c.failed_step, streamingUrl: c.streaming_url, durationMs: c.duration_ms, now: c.now_text,
     })),
   };
 }
@@ -198,7 +209,7 @@ export async function getCheck(id: string): Promise<CheckDetail | undefined> {
     file: b?.file ?? null, line: b?.line ?? null, checkpointId: b?.checkpoint_id ?? null,
     promptSessionId: b?.prompt_session_id ?? null, promptMessageId: b?.prompt_message_id ?? null,
     cause: b?.cause ?? null, promptText: b?.prompt_text ?? null,
-    specSteps: Array.isArray(c.compiled?.spec?.steps) ? (c.compiled.spec.steps as string[]) : [],
+    specSteps: specSteps(c.compiled),
   };
 }
 

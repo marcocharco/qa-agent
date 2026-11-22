@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <header className="border-b border-line">
-          <div className="mx-auto flex h-14 max-w-6xl items-center px-6">
+          <div className="mx-auto flex h-14 max-w-[1680px] items-center px-5">
             <Link href="/" className="text-xl font-bold tracking-tight">ArcherFish<span className="text-accent">.</span></Link>
           </div>
         </header>

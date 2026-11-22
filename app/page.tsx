@@ -17,7 +17,7 @@ export default async function Home() {
   const trails = sortTrails(await listTrailCards());
   if (!trails.length) {
     return (
-      <main className="mx-auto w-full max-w-6xl px-6 py-20">
+      <main className="mx-auto w-full max-w-[1680px] px-5 py-20">
         <h1 className="text-3xl font-semibold tracking-tight">No Trails yet</h1>
         <p className="mt-3 max-w-lg text-muted">
           Run the orchestrator on a Trail (<code className="font-mono text-sm">npx tsx --env-file=.env.local scripts/orchestrate.mts &lt;trail-number&gt;</code>)
@@ -27,7 +27,7 @@ export default async function Home() {
     );
   }
   return (
-    <main className="mx-auto w-full max-w-6xl px-6 pb-24 pt-10">
+    <main className="mx-auto w-full max-w-[1680px] px-5 pb-24 pt-10">
       <h1 className="text-3xl font-semibold tracking-tight">Your Trails</h1>
       <p className="mt-1 text-muted">What needs you comes first.</p>
       <ul className="mt-8 grid gap-4 md:grid-cols-2">

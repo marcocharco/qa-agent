@@ -3,7 +3,7 @@
 // Local replay screenshots are plain files served by our own route, next/image adds nothing here.
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { collapseSteps } from "@/lib/collapse";
 
 export type ReplayData = {
@@ -16,6 +16,7 @@ export type ReplayData = {
   end: number;
 };
 
+const CLICK = /\b(click|press|tap|select|increase|decrease|set|apply|switch|toggle|choose|submit|add|remove)\b/i;
 const src = (file: string) => `/api/replay/${file}`;
 
 /** What the agent did, one frame per step, opening on the moment it went wrong. */
@@ -52,6 +53,11 @@ export default function Replay({ r, failing, checkId }: { r: ReplayData; failing
   const path = raw.slice(Math.max(0, upTo - 8), upTo + 1)
     .map((x) => (x.file ? r.cursors?.[x.file] ?? null : null))
     .filter((p, k, a): p is { x: number; y: number } => !!p && (k === 0 || !a[k - 1] || Math.hypot(p.x - a[k - 1]!.x, p.y - a[k - 1]!.y) > 0.004));
+  const gid = useId();
+  const end = path.at(-1) ?? { x: 0, y: 0 };
+  const d = path.map((p, k) => `${k ? "L" : "M"}${(p.x * 1280).toFixed(1)} ${(p.y * 720).toFixed(1)}`).join(" ");
+  // The agent's own words for the step. A click-like action makes the end of the trail ring out.
+  const clicked = path.length > 0 && CLICK.test(raw[upTo]?.action ?? "");
   if (!frames.length) return null;
   const go = (n: number) => { setPlaying(false); setI(Math.min(last, Math.max(0, n))); };
   const tab = (m: "steps" | "video", label: string) => (
@@ -73,18 +79,24 @@ export default function Replay({ r, failing, checkId }: { r: ReplayData; failing
             {f.file ? (
               <img src={src(f.file)} alt={f.label} className="h-full w-full object-contain" />
             ) : <div className="flex h-full items-center justify-center text-sm text-muted">No screenshot for this step</div>}
-            {path.length > 1 && (
-              <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden>
-                {path.slice(1).map((p, k) => {
-                  const a = path[k];
-                  const fade = (k + 1) / (path.length - 1);
-                  return (
-                    <g key={k} opacity={0.25 + 0.75 * fade} strokeLinecap="round">
-                      <line x1={a.x} y1={a.y} x2={p.x} y2={p.y} stroke="white" strokeWidth={7} vectorEffect="non-scaling-stroke" />
-                      <line x1={a.x} y1={a.y} x2={p.x} y2={p.y} stroke="var(--color-accent)" strokeWidth={3.5} vectorEffect="non-scaling-stroke" />
-                    </g>
-                  );
-                })}
+            {path.length > 0 && (
+              <svg key={i} className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1280 720" aria-hidden>
+                {path.length > 1 && (
+                  <>
+                    <defs>
+                      <linearGradient id={`${gid}-g`} gradientUnits="userSpaceOnUse" x1={path[0].x * 1280} y1={path[0].y * 720} x2={path.at(-1)!.x * 1280} y2={path.at(-1)!.y * 720}>
+                        <stop offset="0" stopColor="var(--color-accent)" stopOpacity="0.2" />
+                        <stop offset="1" stopColor="var(--color-accent)" />
+                      </linearGradient>
+                    </defs>
+                    <path className="cursor-trail" d={d} pathLength={1} fill="none" stroke="white" strokeWidth={9} strokeLinecap="round" strokeLinejoin="round" />
+                    <path className="cursor-trail" d={d} pathLength={1} fill="none" stroke={`url(#${gid}-g)`} strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" />
+                  </>
+                )}
+                {clicked && [0, 0.18].map((delay) => (
+                  <circle key={delay} className="radar" cx={end.x * 1280} cy={end.y * 720} r={42} fill="none" stroke="var(--color-accent)" strokeWidth={4}
+                    style={{ animationDelay: `${path.length > 1 ? delay : delay - 1.15}s` }} />
+                ))}
               </svg>
             )}
             {failing && mark?.box && f.file === mark.file && (

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --background: #ffffff;
   --panel: #fafafa;
   --line: #e5e5e8;
@@ -45,4 +46,46 @@ dialog::backdrop {
 @layer base {
   button:not(:disabled), [role="button"]:not(:disabled), summary, select, label[for], a[href] { cursor: pointer; }
   button:disabled { cursor: not-allowed; }
+}
+
+/* Replay cursor trail: draws from where the cursor started to where it ended, holds, fades, and loops.
+   A click rings out from the end point, timed to land when the line arrives. */
+@keyframes trail-draw {
+  0% { stroke-dashoffset: 1; opacity: 1; }
+  40%, 80% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+@keyframes radar {
+  0%, 38% { transform: scale(0.15); opacity: 0; }
+  40% { opacity: 0.85; }
+  72%, 100% { transform: scale(1); opacity: 0; }
+}
+.cursor-trail { stroke-dasharray: 1; animation: trail-draw 3s var(--ease-out) infinite; }
+.radar { transform-box: fill-box; transform-origin: center; opacity: 0; animation: radar 3s var(--ease-out) infinite; }
+
+/* The agent's latest action: the old line leaves as the new one arrives. */
+@keyframes now-in { from { opacity: 0; transform: translateY(4px); } }
+@keyframes now-out { to { opacity: 0; transform: translateY(-4px); } }
+@keyframes now-fade-in { from { opacity: 0; } }
+@keyframes now-fade-out { to { opacity: 0; } }
+.now-in { animation: now-in 220ms var(--ease-out) both; }
+.now-out { animation: now-out 160ms var(--ease-out) both; }
+
+/* In progress, in the progress panel: a live dot that sends out rings, and three dots that take turns. */
+@keyframes live-ring { from { transform: scale(1); opacity: 0.5; } to { transform: scale(2.6); opacity: 0; } }
+@keyframes dot-fade { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+.live-dot { position: relative; display: inline-block; width: 8px; height: 8px; border-radius: 9999px; background: var(--accent); }
+.live-dot::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--accent); animation: live-ring 1.6s var(--ease-out) infinite; }
+.think span { display: inline-block; width: 4px; height: 4px; margin-right: 3px; border-radius: 9999px; background: var(--accent); animation: dot-fade 1.2s ease-in-out infinite; }
+.think span:nth-child(2) { animation-delay: 0.15s; }
+.think span:nth-child(3) { animation-delay: 0.3s; }
+
+/* Reduced motion keeps the information and drops the movement. */
+@media (prefers-reduced-motion: reduce) {
+  .cursor-trail { animation: none; stroke-dashoffset: 0; }
+  .radar { animation: none; opacity: 0; }
+  .now-in { animation-name: now-fade-in; }
+  .now-out { animation-name: now-fade-out; }
+  .live-dot::after { animation: none; opacity: 0.25; transform: scale(1.8); }
+  .think span { animation: none; opacity: 0.6; }
 }

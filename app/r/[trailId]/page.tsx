@@ -24,7 +24,7 @@ export default async function Report({ params }: { params: Promise<{ trailId: st
   if (!d) notFound();
   const b = banner[d.verdict];
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 pb-24 pt-10">
+    <main className="mx-auto w-full max-w-3xl px-4 pb-24 pt-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="flex items-center gap-2 text-xs text-muted"><span className={chip}>{d.branch || "no branch"}</span>{d.commit && <span className={chip}>{d.commit.slice(0, 7)}</span>}{d.ranAt && <span>tested {ago(d.ranAt)}</span>}</span>
         <div className="flex items-center gap-3">

@@ -46,7 +46,7 @@ export type CheckRun = RunnerOutcome & {
 export async function runCheck(
   goal: string,
   url: string,
-  hooks: { onStreamingUrl?: (u: string) => void } = {},
+  hooks: { onStreamingUrl?: (u: string) => void; onProgress?: (purpose: string) => void } = {},
   schema: Record<string, unknown> = OUTPUT_SCHEMA,
   limits = { maxSteps: 40, maxSeconds: 300 },
 ): Promise<CheckRun> {
@@ -64,7 +64,10 @@ export async function runCheck(
     else if (e.type === "STREAMING_URL") {
       run.streamingUrl = e.streaming_url;
       hooks.onStreamingUrl?.(e.streaming_url);
-    } else if (e.type === "PROGRESS") run.steps.push(e.purpose);
+    } else if (e.type === "PROGRESS") {
+      run.steps.push(e.purpose);
+      hooks.onProgress?.(e.purpose);
+    }
     else if (e.type === "COMPLETE") {
       run.runId = e.run_id;
       run.status = e.status;
@@ -76,5 +79,5 @@ export async function runCheck(
 }
 
 /** One browser session for a whole feature: several checks in order, one verdict each. */
-export const runFeature = (goal: string, url: string, checks: number, hooks: { onStreamingUrl?: (u: string) => void } = {}) =>
+export const runFeature = (goal: string, url: string, checks: number, hooks: { onStreamingUrl?: (u: string) => void; onProgress?: (purpose: string) => void } = {}) =>
   runCheck(goal, url, hooks, featureSchema(checks), { maxSteps: Math.min(100, 25 * checks), maxSeconds: Math.min(900, 150 * checks) });

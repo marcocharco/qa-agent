@@ -192,6 +192,7 @@ export async function processTrail(cfg: Config, ref: TrailRef, opts: { only?: st
         const goal = renderFeatureGoal(items.map((c) => c.spec));
         const start = () => runFeature(goal, cfg.targetUrl, items.length, {
           onStreamingUrl: (u) => void db().query("update checks set streaming_url=$2 where id = any($1)", [ids, u]),
+          onProgress: (p) => void db().query("update checks set now_text=$2 where id = any($1)", [ids, p]),
         });
         // The agent sometimes finishes its browsing and then hands back an empty list. That says nothing about the site,
         // so the session is simply run again (up to twice) before anything counts as a verdict.
@@ -201,7 +202,7 @@ export async function processTrail(cfg: Config, ref: TrailRef, opts: { only?: st
           run = await start();
         }
         // The stream is dead once the session ends. Clear it so the live view never embeds a finished browser.
-        await db().query("update checks set streaming_url=null where id = any($1)", [ids]);
+        await db().query("update checks set streaming_url=null, now_text=null where id = any($1)", [ids]);
         // Download the screenshots and recording right away, the video link expires. A failure here never loses a verdict.
         const replay = run.runId ? await saveReplay(run.runId).catch((e) => { cfg.log?.(`replay not saved: ${String(e).slice(0, 100)}`); return null; }) : null;
         // A pass is only believed if the check's last screenshot does not contradict what the agent says it saw.

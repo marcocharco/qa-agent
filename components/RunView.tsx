@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { setStatus } from "@/app/actions";
-import { buildCards, defaultCard, groupByFeature, shortLabel, splitReason, summarize, titleCase, verdictOf, type Card, type Verdict } from "@/lib/overview";
+import { cleanAction } from "@/lib/collapse";
+import { buildCards, defaultCard, groupByFeature, type FeatureGroup, shortLabel, splitReason, summarize, titleCase, verdictOf, type Card, type Verdict } from "@/lib/overview";
 import type { Live, RequirementRow } from "@/lib/queries";
 import Replay, { type ReplayData } from "./Replay";
 import RerunTest from "./RerunTest";
@@ -44,6 +45,54 @@ function StartingPanel({ job }: { job: Job }) {
       <p className="max-w-md text-sm text-muted">Reading the Trail, turning requirements into browser goals, then opening the browsers. The live view appears here as soon as the first one starts.</p>
       {last && <p className="max-w-lg truncate font-mono text-xs text-muted">{last}</p>}
     </div>
+  );
+}
+
+/** The agent's latest action. When it changes, the old line fades out as the new one fades in. */
+function Fading({ text }: { text: string }) {
+  const [shown, setShown] = useState({ cur: text, prev: null as string | null, n: 0 });
+  if (text !== shown.cur) setShown({ cur: text, prev: shown.cur, n: shown.n + 1 });
+  return (
+    <span className="relative block min-w-0 flex-1" aria-live="polite">
+      {shown.prev && <span key={`p${shown.n}`} className="now-out absolute inset-x-0 top-0 break-words" aria-hidden>{shown.prev}</span>}
+      <span key={`c${shown.n}`} className="now-in block break-words">{shown.cur}</span>
+    </span>
+  );
+}
+
+/** What the agent is doing, in the test's own steps. Not the agent's raw action log. */
+function ProgressPanel({ group: all, job }: { group: FeatureGroup | undefined; job: Job }) {
+  // A single rerun shares its feature with results that are already in: only the checks being run belong here.
+  const group = all && { ...all, cards: all.cards.filter((c) => c.state === "running") };
+  const now = group?.cards.map((c) => c.check?.now).find(Boolean) ?? null;
+  const last = job?.log.filter((l) => l.trim() && !/^\s*[{}]/.test(l)).at(-1)?.replace(/^\d{2}:\d{2}:\d{2}\s+/, "");
+  // The agent says which check it is on ("CHECK 2 step 3"). Before that, it is on the first.
+  const active = Math.max(0, Math.min((group?.cards.length ?? 1) - 1, Number(/check (\d+)/i.exec(now ?? "")?.[1] ?? 1) - 1));
+  return (
+    <section className="rounded-2xl border border-line bg-background p-4" role="status">
+      <h2 className="text-sm font-semibold">Progress</h2>
+      {group && <p className="mt-0.5 text-xs text-muted">{titleCase(group.feature)} · check {active + 1} of {group.cards.length}</p>}
+      <div className="mt-3 flex items-start gap-2.5 rounded-lg bg-chip/60 px-3 py-2 text-xs">
+        <span className="think mt-1.5 shrink-0" aria-hidden><span /><span /><span /></span>
+        <Fading text={now ? cleanAction(now) : last ?? "Starting the browser"} />
+      </div>
+      <ol className="mt-4 space-y-3">
+        {group?.cards.map((c, i) => (
+          <li key={c.req.id} className={i > active ? "opacity-50" : ""}>
+            <p className="flex items-start gap-2 text-sm font-medium">
+              <span className="mt-0.5 shrink-0">{i < active ? <span className="flex h-4 w-4 items-center justify-center rounded-full bg-chip text-[10px] text-muted">✓</span> : i === active ? <span className="flex h-4 w-4 items-center justify-center" aria-label="In progress"><span className="live-dot" /></span> : <StatusIcon state="todo" size={15} />}</span>
+              <span>{shortLabel(c.req.text, 70)}</span>
+            </p>
+            {i === active && !!c.req.steps?.length && (
+              <ol className="ml-6 mt-1.5 space-y-1 text-sm text-muted">
+                {c.req.steps.map((st, k) => <li key={k} className="flex gap-2"><span className="w-4 shrink-0 text-right font-mono text-xs leading-5">{k + 1}</span><span>{st}</span></li>)}
+              </ol>
+            )}
+          </li>
+        ))}
+      </ol>
+      {!group && <p className="mt-4 text-sm text-muted">Reading the Trail and opening the first browser. The steps of each test appear here as it starts.</p>}
+    </section>
   );
 }
 
@@ -118,6 +167,9 @@ export default function RunView({ trailId, fresh, regression, initial }: { trail
   const liveGroup = groups.find((g) => g.feature === pinned && g.streamingUrl) ?? groups.find((g) => g.streamingUrl);
   // While a run is open the preview follows the live session. Choosing a finished task, or a run that has ended, shows its replay.
   const showLive = running && !!liveGroup && mode === "auto";
+  // While browsers work, the right column is the step-by-step progress. Once a task is chosen or the run ends, it is the result.
+  const progressGroup = liveGroup ?? groups.find((g) => g.state === "running");
+  const showProgress = (running || opening) && mode === "auto";
   const seg = (n: number, cls: string) => n > 0 && <div className={`${cls} transition-all`} style={{ flex: n }} />;
   const { claim, saw } = splitReason(sel?.check?.reason ?? null);
 
@@ -137,7 +189,7 @@ export default function RunView({ trailId, fresh, regression, initial }: { trail
           </div>
         </div>
       )}
-      <section className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border border-line bg-panel px-5 py-3.5">
+      <section className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border border-line bg-panel px-5 py-2.5">
         <span className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-semibold ${v.cls}`}><StatusIcon state={v.icon} size={16} />{v.text}</span>
         <div className="flex h-2.5 min-w-[180px] flex-1 overflow-hidden rounded-full bg-chip" role="img" aria-label="Progress">
           {seg(s.passed, "bg-pass")}{seg(s.failed, "bg-fail")}{seg(s.review, "bg-accent/70")}{seg(s.errored, "bg-muted/50")}{seg(s.running, "bg-accent animate-pulse")}{seg(s.todo, "bg-transparent")}
@@ -152,8 +204,8 @@ export default function RunView({ trailId, fresh, regression, initial }: { trail
         <RunNow trailId={trailId} goToRun={false} running={running || !!job?.running || starting} onStart={() => { setStarting(true); void poll().finally(() => setStarting(false)); }} />
       </section>
 
-      <div className="mt-4 grid items-start gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-        <nav className="min-h-0 overflow-auto rounded-2xl lg:max-h-[calc(100vh-300px)] lg:min-h-[320px] border border-line bg-background p-2" aria-label="Requirements by feature">
+      <div className="mt-3 grid items-start gap-3 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_340px]">
+        <nav className="min-h-0 overflow-auto rounded-2xl lg:max-h-[calc(100vh-256px)] lg:min-h-[320px] border border-line bg-background p-2" aria-label="Requirements by feature">
           <h2 className="px-2.5 pb-1 pt-2 text-sm font-semibold">Requirements</h2>
           {groups.map((g) => (
             <div key={g.feature} className="mb-2">
@@ -170,7 +222,7 @@ export default function RunView({ trailId, fresh, regression, initial }: { trail
           {!cards.length && <p className="px-3 py-8 text-center text-sm text-muted">No requirements yet. Add some in Requirements.</p>}
         </nav>
 
-        <div className="flex min-w-0 flex-col gap-3">
+        <div className="mx-auto flex w-full min-w-0 flex-col gap-3" style={{ maxWidth: "max(560px, calc((100vh - 440px) * 16 / 9))" }}>
           {running && groups.some((g) => g.streamingUrl) && (
             <div className="flex flex-wrap items-center gap-2" aria-label="Browser sessions">
               {groups.filter((g) => g.streamingUrl).map((g) => (
@@ -187,24 +239,35 @@ export default function RunView({ trailId, fresh, regression, initial }: { trail
             : sel ? <ReplayPane card={sel} />
             : <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-line text-sm text-muted">Nothing to show yet.</div>}
 
-          {sel && (
-            <section className="rounded-2xl border border-line bg-background px-5 py-3.5">
-              <div className="flex items-center justify-between gap-3">
-                <p className="flex min-w-0 items-center gap-2.5 font-medium"><StatusIcon state={sel.state} /><span className="truncate">{shortLabel(sel.req.text, 80)}</span></p>
-                <div className="flex shrink-0 items-center gap-3">
-                  {sel.state === "proposed" && <button className={btnGhost} onClick={() => void setStatus(sel.req.id, "approved")}>Approve</button>}
-                  {sel.state !== "proposed" && sel.state !== "todo" && sel.state !== "running" && <RerunTest trailId={trailId} requirementId={sel.req.id} disabled={running || !!job?.running || starting} onStart={() => { setStarting(true); void poll().finally(() => setStarting(false)); }} />}
-                  {sel.state === "failed" && sel.check && <Link className="text-sm font-medium text-accent hover:underline" href={`/t/${trailId}/checks/${sel.check.id}`}>Bug report →</Link>}
-                </div>
+        </div>
+
+        <aside className="min-w-0 lg:col-span-2 xl:col-span-1" aria-label={showProgress ? "Progress" : "Result"}>
+          {showProgress ? <ProgressPanel group={progressGroup} job={job} /> : sel && (
+            <section className="rounded-2xl border border-line bg-background p-4">
+              <p className="flex items-start gap-2.5 font-medium"><span className="mt-0.5 shrink-0"><StatusIcon state={sel.state} /></span><span>{shortLabel(sel.req.text, 90)}</span></p>
+              {claim && <p className="mt-3 text-sm text-muted">{claim}</p>}
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                {sel.state === "proposed" && <button className={btnGhost} onClick={() => void setStatus(sel.req.id, "approved")}>Approve</button>}
+                {sel.state !== "proposed" && sel.state !== "todo" && sel.state !== "running" && <RerunTest trailId={trailId} requirementId={sel.req.id} disabled={running || !!job?.running || starting} onStart={() => { setStarting(true); void poll().finally(() => setStarting(false)); }} />}
+                {sel.state === "failed" && sel.check && <Link className="ml-auto text-sm font-medium text-accent hover:underline" href={`/t/${trailId}/checks/${sel.check.id}`}>Bug report →</Link>}
               </div>
-              {claim && <p className="mt-1.5 line-clamp-2 text-sm text-muted">{claim}</p>}
-              <details className="mt-1.5 text-xs text-muted">
-                <summary className="cursor-pointer">Details</summary>
-                <div className="mt-2 max-w-3xl space-y-2"><p>{sel.req.text}</p>{saw && <p className="font-mono">Saw: {saw}</p>}{sel.req.quote && <p className="italic">&ldquo;{sel.req.quote}&rdquo;</p>}</div>
+              {!!sel.req.steps?.length && (
+                <div className="mt-4 border-t border-line pt-3">
+                  <p className="text-xs font-semibold text-muted">Steps</p>
+                  <ol className="mt-1.5 space-y-1 text-sm">
+                    {sel.req.steps.map((st, i) => (
+                      <li key={i} className="flex gap-2"><span className="w-4 shrink-0 text-right font-mono text-xs leading-5 text-muted">{i + 1}</span><span>{st}</span></li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+              <details className="mt-3 text-xs text-muted">
+                <summary>Details</summary>
+                <div className="mt-2 space-y-2"><p>{sel.req.text}</p>{saw && <p className="font-mono">Saw: {saw}</p>}{sel.req.quote && <p className="italic">&ldquo;{sel.req.quote}&rdquo;</p>}</div>
               </details>
             </section>
           )}
-        </div>
+        </aside>
       </div>
     </div>
   );
