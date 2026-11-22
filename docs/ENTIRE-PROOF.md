@@ -1,6 +1,6 @@
 # Entire proof
 
-Generated 2026-11-22T07:48:12.601Z by `scripts/entire-proof.mts`. Everything below is read live from the Entire CLI in the demo repo (`/Users/marco/Developer/acme-pricing-demo`), then checked against what ArcherFish stored. Re-run any command yourself in that folder.
+Generated 2026-11-22T07:52:24.889Z by `scripts/entire-proof.mts`. Everything below is read live from the Entire CLI in the demo repo (`/Users/marco/Developer/acme-pricing-demo`), then checked against what ArcherFish stored. Re-run any command yourself in that folder.
 
 ## 1. Entire is installed and wired to the repo
 
@@ -27,22 +27,21 @@ Trail #4 has 1 linked session(s): `592c31ad-d010-4ba7-8b75-5add236ef78f`.
 
 ## 3. Citation check: every quoted requirement is verbatim in the session transcript fetched from Entire
 
-**12 of 12** quotes found in the real transcript. Negative control (one character changed in a quote): rejected, as it should be.
+**11 of 11** quotes found in the real transcript. Negative control (one character changed in a quote): rejected, as it should be.
 
 | Verbatim in transcript | Quote | Source |
 |---|---|---|
-| yes | each card gets its own seat stepper and its own total, so + and - on p | session `fcd63cb4`, message `2439e791` |
-| yes | $29.00 per seat per month, 3 seats minimum so it starts at 3 and the m | session `fcd63cb4`, message `532b15f3` |
 | yes | the "Price per seat" line should keep showing the per seat price | session `fcd63cb4`, message `532b15f3` |
 | yes | it's $19.00 per seat per month, 1 to 50 seats | session `fcd63cb4`, message `2439e791` |
+| yes | each card gets its own seat stepper and its own total, so + and - on p | session `fcd63cb4`, message `2439e791` |
+| yes | $29.00 per seat per month, 3 seats minimum so it starts at 3 and the m | session `fcd63cb4`, message `532b15f3` |
+| yes | no discount line at all when there's no coupon | session `fcd63cb4`, message `afe5d57f` |
 | yes | the pricing page should feel more trustworthy. no idea what exactly, j | session `592c31ad`, message `0591dc90` |
 | yes | it applies to both cards. | session `fcd63cb4`, message `9a6ae274` |
-| yes | under each total i want a "Subtotal: $95.00" line, and when a coupon i | session `fcd63cb4`, message `afe5d57f` |
-| yes | no discount line at all when there's no coupon | session `fcd63cb4`, message `afe5d57f` |
-| yes | the box takes SAVE10, case doesn't matter and strip any spaces, it's 1 | session `fcd63cb4`, message `9a6ae274` |
 | yes | on Apply show "SAVE10 applied: 10% off" under the box, anything else s | session `fcd63cb4`, message `9a6ae274` |
+| yes | under each total i want a "Subtotal: $95.00" line, and when a coupon i | session `fcd63cb4`, message `afe5d57f` |
+| yes | the box takes SAVE10, case doesn't matter and strip any spaces, it's 1 | session `fcd63cb4`, message `9a6ae274` |
 | yes | total is subtotal minus discount, rounded to the cent. | session `fcd63cb4`, message `afe5d57f` |
-| yes | add a small "Save 20%" tag next to the toggle that only shows when ann | session `592c31ad`, message `b05321ad` |
 
 ## 4. Attribution: `entire why` maps a line of code to the checkpoint, session and exact prompt that wrote it
 
@@ -65,31 +64,38 @@ $ entire graph query --format agent --head --profile full "<failure in plain wor
 
 Changed source files: 3685 tokens (about, characters / 4). Graph query context: 1734 tokens. That is 53 percent less code for the model to read.
 
-## 6. Brain: approved requirements are memories that agents recall
+## 6. Brain: approved requirements are memories, anchored to the code they constrain, shown to an agent about to edit it
+
+ArcherFish writes a memory when a requirement is approved. It asks Entire Graph which file implements the requirement and names that file in the memory, so Brain's edit hook can show it to any Claude Code session that is about to edit that file.
+
+```
+$ entire brain hook pre-edit --file lib/pricing.ts   # what an agent sees before editing the file
+```
+
+```
+[invariant] lib/pricing.ts, components/PricingCard.tsx: Annual comes first, then the coupon: Pro at 5 seats annual with SAVE10 has discount -$91.20 and total $820.80 per year.
+[invariant] lib/pricing.ts, components/PricingCard.tsx: SAVE10 works on Team in annual mode: Team at 3 seats annual with SAVE10 has subtotal $835.20, discount -$83.52, total $751.68 per year.
+[invariant] lib/pricing.ts, components/PricingCard.tsx: Pro at 5 seats monthly totals $95.00 per month.
+[invariant] lib/pricing.ts, components/PlanCard.tsx: Team needs at least 3 seats: pressing minus at 3 seats keeps the count at 3 and the total at $87.00 per month.
+[invariant] lib/pricing.ts, components/PricingCard.tsx: SAVE10 takes 10% off the Team plan on monthly billing.
+[invariant] lib/pricing.ts, components/PricingCard.tsx: Pro at 5 seats on annual billing totals $912.00 per year, with the line Billed $912.00 yearly.
+[invariant] lib/pricing.ts, components/PricingCard.tsx: Team at 9 seats monthly gets no volume discount and totals $261.00 per month.
+[invariant] lib/pricing.ts, components/PricingCard.tsx: Team gets 5% off the subtotal at 10 or more seats: Team at 10 seats monthly has subtotal $290.00, volume discount -$14.50, total $275.50 per month.
+```
 
 ```
 $ entire brain recall "change the volume discount threshold"
 ```
 
 ```
-fact:6953232ab1400a389162712c convention [project.requirements.convention]
-  Team at 9 seats monthly gets no volume discount and totals $261.00 per month.
-fact:c3d7bbd1c55b0be9d397f7d6 convention [project.requirements.convention]
-  Team gets 5% off the subtotal at 10 or more seats: Team at 10 seats monthly has subtotal $290.00, volume discount -$14.50, total $275.50 per month.
-fact:45bf59e9ee40bd810dd07afa convention [project.requirements.convention]
-  No discount line must be displayed when there is no coupon applied.
-fact:b93377afdfbdf9b41915f215 convention [project.requirements.convention]
-  The total must equal the subtotal minus the discount, rounded to the cent.
-fact:4aa0f1d4f8c8113630496ded convention [project.requirements.convention]
-  The coupon discount must apply to both the Pro and Team plan cards.
-fact:9bdfa5556a796ff27a849d86 convention [project.requirements.convention]
-  The coupon input must accept the coupon SAVE10 (ignoring case and whitespace) and give a 10% discount.
-fact:dfe92448762c68f9edab2b55 convention [project.requirements.convention]
-  Under each total, display a Subtotal line and, when a coupon is applied, display a "Discount (SAVE10): -$X.XX" line beneath it.
-fact:7edb8bdbd994e06380c20113 convention [project.requirements.convention]
-  Annual comes first, then the coupon: Pro at 5 seats annual with SAVE10 has discount -$91.20 and total $820.80 per year.
-fact:6c4af0bc7d577828cde0e81d convention [project.requirements.convention]
-  SAVE10 works on Team in annual mode: Team at 3 seats annual with SAVE10 has subtotal $835.20, discount -$83.52, total $751.68 per year.
+fact:49cc5c9436d43de2d9a42efd invariant [project.requirements.convention]
+  lib/pricing.ts, components/PricingCard.tsx: Team at 9 seats monthly gets no volume discount and totals $261.00 per month.
+fact:a86041bb48028e2fe2887602 invariant [project.requirements.convention]
+  lib/pricing.ts, components/PricingCard.tsx: Team gets 5% off the subtotal at 10 or more seats: Team at 10 seats monthly has subtotal $290.00, volume discount -$14.50, total $275.50 per month.
+fact:ddd732d633c89c428fb5d0b8 invariant [project.requirements.convention]
+  lib/pricing.ts, components/PricingCard.tsx: Annual comes first, then the coupon: Pro at 5 seats annual with SAVE10 has discount -$91.20 and total $820.80 per year.
+fact:837b3dedb1212b78e60dd6f5 invariant [project.requirements.convention]
+  lib/pricing.ts, components/PricingCard.tsx: SAVE10 works on Team in annual mode: Team at 3 seats annual with SAVE10 has subtotal $835.20, discount -$83.52, total $751.68 per year.
 ```
 
 ## 7. Findings and the merge gate live in Entire

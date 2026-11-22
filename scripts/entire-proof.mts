@@ -120,7 +120,11 @@ try {
 }
 
 // 6. Brain
-say("## 6. Brain: approved requirements are memories that agents recall", "", "```", `$ entire brain recall "change the volume discount threshold"`, "```", "", "```", await sh("entire", ["brain", "recall", "change the volume discount threshold"]), "```", "");
+say("## 6. Brain: approved requirements are memories, anchored to the code they constrain, shown to an agent about to edit it", "",
+  "ArcherFish writes a memory when a requirement is approved. It asks Entire Graph which file implements the requirement and names that file in the memory, so Brain's edit hook can show it to any Claude Code session that is about to edit that file.", "",
+  "```", `$ entire brain hook pre-edit --file lib/pricing.ts   # what an agent sees before editing the file`, "```", "", "```",
+  (await sh("entire", ["brain", "hook", "pre-edit", "--file", "lib/pricing.ts", "--budget", "1200"])), "```", "",
+  "```", `$ entire brain recall "change the volume discount threshold"`, "```", "", "```", (await sh("entire", ["brain", "recall", "change the volume discount threshold"])).slice(0, 1800), "```", "");
 
 // 7. Findings and the gate
 say("## 7. Findings and the merge gate live in Entire", "", "```", `$ entire trail finding list ${trail} --project ${project}`, "```", "", "```", (await sh("entire", ["trail", "finding", "list", trail, "--project", project])).slice(0, 2500), "```", "", "```", `$ entire trail merge ${trail} --dry-run`, (await sh("entire", ["trail", "merge", trail, "--project", project, "--dry-run"])).slice(0, 800), "```", "");
