@@ -65,7 +65,7 @@ async function pool<T>(limit: number, items: T[], task: (item: T) => Promise<voi
   );
 }
 
-async function buildSources(cfg: Config, trail: TrailInfo, ref: TrailRef): Promise<Source[]> {
+export async function buildSources(cfg: Config, trail: TrailInfo, ref: TrailRef): Promise<Source[]> {
   const sources: Source[] = [
     { kind: "description", id: `trail-${trail.number}`, messages: [{ id: "description", role: "user", text: `${trail.title}\n\n${trail.body}` }] },
   ];

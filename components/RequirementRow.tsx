@@ -36,7 +36,10 @@ export default function RequirementRow({ r, showTrail = false, select }: { r: Re
             </div>
           </div>
         ) : (
-          <p className={`text-[15px] leading-relaxed ${r.status === "rejected" ? "line-through" : ""}`}>{r.text}</p>
+          <div className="text-[15px] leading-relaxed">
+            <span className={r.status === "rejected" ? "line-through" : ""}>{r.text}</span>
+            {r.sourceKind !== "manual" && <ReceiptChip requirementId={r.id} kind={r.sourceKind} />}
+          </div>
         )}
         {r.supersedes && r.status === "proposed" && (
           <div className="mt-3 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm">
@@ -52,10 +55,10 @@ export default function RequirementRow({ r, showTrail = false, select }: { r: Re
           <span className={chip}>{Math.round(r.confidence * 100)}% confident</span>
           {r.edited && <span className={chip}>edited</span>}
           {showTrail && <span className={chip}>{r.trailTitle}</span>}
-          <ReceiptChip requirementId={r.id} kind={r.sourceKind} />
+          {r.sourceKind === "manual" && <span className={chip}>added by hand</span>}
         </div>
         {warning && <p className="mt-2 text-sm text-fail">{warning}</p>}
-        {!r.testable && <p className="mt-2 text-sm text-muted">Not tested: {r.untestableReason ?? "no reason given"}</p>}
+        {!r.testable && !r.supersedes && <p className="mt-2 text-sm text-muted">Not tested: {r.untestableReason ?? "no reason given"}</p>}
       </div>
       <div className="flex flex-wrap items-start gap-2 md:justify-end">
         {!editing && <button className={btnGhost} onClick={() => setEditing(true)}>Edit</button>}

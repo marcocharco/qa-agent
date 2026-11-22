@@ -226,7 +226,7 @@ export type Coverage = {
 /** Which of this Trail's stated asks are covered by a test, which are not yet, and which cannot be. */
 export async function trailCoverage(trailId: string): Promise<Coverage> {
   const { rows } = await db().query(
-    `select r.text, r.testable, r.untestable_reason, r.status, exists (select 1 from checks c where c.requirement_id = r.id) as ran
+    `select r.text, r.testable, r.untestable_reason, r.status, r.supersedes_id, exists (select 1 from checks c where c.requirement_id = r.id) as ran
      from requirements r where r.trail_id = $1 and r.status in ('proposed','approved') order by r.text`,
     [trailId],
   );
@@ -235,7 +235,7 @@ export async function trailCoverage(trailId: string): Promise<Coverage> {
     asks: rows.length,
     live: live.length,
     neverRun: live.filter((r) => !r.ran).map((r) => r.text),
-    untestable: rows.filter((r) => !r.testable).map((r) => ({ text: r.text, reason: r.untestable_reason ?? "no reason given" })),
+    untestable: rows.filter((r) => !r.testable && !r.supersedes_id).map((r) => ({ text: r.text, reason: r.untestable_reason ?? "no reason given" })),
   };
 }
 

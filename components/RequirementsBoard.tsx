@@ -2,20 +2,21 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { setMany } from "@/app/actions";
+import { featureOrder } from "@/lib/overview";
 import type { RequirementRow as Req } from "@/lib/queries";
 import RequirementRow from "./RequirementRow";
 import { btn, btnGhost, chip } from "./ui";
 
-type Filter = "all" | "review" | "approved" | "rejected" | "untestable";
+type Filter = "all" | "review" | "approved" | "rejected";
 
 const HIGH = 0.85;
 
 const matches: Record<Filter, (r: Req) => boolean> = {
-  all: () => true,
+  // What is live: asks waiting for review and asks that are approved. Rejected and replaced ones have their own tab.
+  all: (r) => r.status === "proposed" || r.status === "approved",
   review: (r) => r.status === "proposed" && r.testable,
   approved: (r) => r.status === "approved",
   rejected: (r) => r.status === "rejected" || r.status === "superseded",
-  untestable: (r) => !r.testable,
 };
 
 function Group({ title, rows, sel, toggle }: { title: string; rows: Req[]; sel: Set<string>; toggle: (id: string) => void }) {
@@ -33,7 +34,10 @@ function Group({ title, rows, sel, toggle }: { title: string; rows: Req[]; sel: 
 }
 
 /** Review the whole set at once: filter, select, approve in bulk. Per-row edit and drift review stay on each row. */
-export default function RequirementsBoard({ fresh, regression }: { fresh: Req[]; regression: Req[] }) {
+export default function RequirementsBoard({ fresh: all, regression: allRegression }: { fresh: Req[]; regression: Req[] }) {
+  // An ask that cannot be tested is not a requirement the app can act on. It stays out of the list; the coverage card above still counts it. A proposed change to an earlier requirement always shows: it is a decision, not a test.
+  const fresh = useMemo(() => all.filter((r) => r.testable || r.supersedes), [all]);
+  const regression = useMemo(() => allRegression.filter((r) => r.testable), [allRegression]);
   const [filter, setFilter] = useState<Filter>("all");
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [pending, start] = useTransition();
@@ -45,13 +49,18 @@ export default function RequirementsBoard({ fresh, regression }: { fresh: Req[];
   const shown = fresh.filter(matches[filter]);
   const groups = useMemo(() => {
     const m = new Map<string, Req[]>();
-    for (const r of shown) m.set(r.feature ?? "Other", [...(m.get(r.feature ?? "Other") ?? []), r]);
-    return [...m];
-  }, [shown]);
+    for (const r of shown) {
+      // A proposed change to an earlier requirement is a decision to make, so it gets its own group (listed first).
+      const key = r.supersedes ? "Changes to earlier requirements" : r.feature ?? "Other";
+      m.set(key, [...(m.get(key) ?? []), r]);
+    }
+    const order = featureOrder(fresh, regression);
+    return [...m].sort(([a], [b]) => order.indexOf(a) - order.indexOf(b));
+  }, [shown, fresh, regression]);
 
   const toggle = (id: string) => setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const run = (ids: string[], status: "approved" | "rejected") => start(async () => { setWarning(await setMany(ids, status)); setSel(new Set()); });
-  const tabs: [Filter, string][] = [["all", "All"], ["review", "To review"], ["approved", "Approved"], ["rejected", "Rejected"], ["untestable", "Can't test"]];
+  const tabs: [Filter, string][] = [["all", "All"], ["review", "To review"], ["approved", "Approved"], ["rejected", "Rejected"]];
 
   return (
     <div className={pending ? "opacity-60" : ""}>

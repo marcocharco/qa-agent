@@ -2,11 +2,11 @@
 
 import { useRef, useState } from "react";
 import type { ReceiptMessage } from "@/lib/report";
-import { btnGhost, chip } from "./ui";
+import { btnGhost } from "./ui";
 
 type Receipt = { label: string; quote: string | null; note: string | null; messages: ReceiptMessage[] };
 
-/** The "receipt" chip: opens the chat message a requirement came from, in context. */
+/** The "session source" link: opens the chat message a requirement came from, in context. An action, so it is not styled as a chip. */
 export default function ReceiptChip({ requirementId, kind }: { requirementId: string; kind: string }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [data, setData] = useState<Receipt | null>(null);
@@ -18,8 +18,9 @@ export default function ReceiptChip({ requirementId, kind }: { requirementId: st
 
   return (
     <>
-      <button onClick={open} className={`${chip} cursor-pointer border border-accent/40 text-accent hover:bg-accent/10`}>
-        receipt · {kind}
+      <button onClick={open} className="ml-3 inline-flex items-center gap-1.5 align-baseline text-sm font-medium text-accent underline-offset-4 hover:underline" aria-haspopup="dialog">
+        {kind === "description" ? "Description source" : "Session source"}
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M14 8V4.5A1.5 1.5 0 0 0 12.5 3h-9A1.5 1.5 0 0 0 2 4.5v6A1.5 1.5 0 0 0 3.5 12H7" /><rect x="9" y="9" width="5" height="4" rx="1" /></svg>
       </button>
       <dialog ref={dialog} onClick={(e) => e.target === dialog.current && dialog.current?.close()} className="m-auto w-[min(40rem,calc(100vw-2rem))] rounded-2xl border border-line bg-background p-0 text-foreground shadow-xl">
         <div className="flex items-center justify-between border-b border-line px-6 py-4">

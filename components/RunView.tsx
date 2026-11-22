@@ -179,13 +179,18 @@ export default function RunView({ trailId }: { trailId: string }) {
           {groups.map((g) => (
             <div key={g.feature} className="mb-2">
               <p className="px-2.5 pb-1 pt-2 text-xs font-semibold text-muted">{titleCase(g.feature)}</p>
-              {g.cards.map((c) => (
-                <button key={c.req.id} onClick={() => choose(c)} aria-current={sel?.req.id === c.req.id}
-                  className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors ${sel?.req.id === c.req.id ? "bg-chip font-medium" : "hover:bg-chip/60"}`}>
-                  <StatusIcon state={c.state} />
-                  <span className="truncate">{shortLabel(c.req.text, 34)}</span>
-                </button>
-              ))}
+              {g.cards.map((c) => {
+                // While a run is open, a requirement has nothing to show until its check finishes, so it is inert: no hover, no pointer, never marked selected.
+                const inert = running && (c.state === "running" || !c.check);
+                const selected = !inert && sel?.req.id === c.req.id;
+                return (
+                  <button key={c.req.id} onClick={() => choose(c)} aria-current={selected} disabled={inert}
+                    className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors disabled:cursor-default ${selected ? "bg-chip font-medium" : "enabled:hover:bg-chip/60"}`}>
+                    <StatusIcon state={c.state} />
+                    <span className="truncate">{shortLabel(c.req.text, 34)}</span>
+                  </button>
+                );
+              })}
             </div>
           ))}
           {!cards.length && <p className="px-3 py-8 text-center text-sm text-muted">No requirements yet. Add some in Requirements.</p>}
