@@ -40,6 +40,7 @@ const reqs: Req[] = [
   ["sample-r-d6", DEMO, "The billing toggle shows Monthly and Annual and defaults to Monthly.", "visual", 0.7, true, null, "proposed", "description", null, "description", "Add a Monthly/Annual toggle"],
   ["sample-r-d7", DEMO, "Totals switch to per year in annual mode and a line under the total shows the monthly equivalent.", "behaviour", 0.55, true, null, "rejected", "session", S2, "msg-02-01", "totals switch to \"per year\" and there's a line under the total"],
   ["sample-r-d8", DEMO, "The volume discount starts at 11 seats.", "behaviour", 0.5, true, null, "superseded", "session", S2, "msg-02-07", "the discount applies once they're over 10 seats"],
+  ["sample-r-d10", DEMO, "Annual billing is 25% off the per seat price, so Pro is $14.25 and Team is $21.75 per seat.", "behaviour", 0.88, true, null, "proposed", "session", S2, "msg-02-10", "actually make annual 25% off, not 20%"],
   ["sample-r-d9", DEMO, "Checkout must work with Apple Pay.", "access", 1, true, null, "approved", "manual", null, null, null, true],
 ];
 
@@ -54,6 +55,7 @@ async function seed() {
       [r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11], r[12] ?? false],
     );
   }
+  await q("update requirements set supersedes_id='sample-r-d2' where id='sample-r-d10'");
   const old = Date.now() - 3 * 3600_000;
   await q("insert into runs (id,trail_id,head_sha,started_at,finished_at,passed_count,failed_count,errored_count) values ('sample-run-old',$1,'9f8e7d6',$2,$3,4,1,0)", [DEMO, new Date(old - 140_000), new Date(old)]);
   await q("insert into runs (id,trail_id,head_sha,started_at,finished_at,passed_count,failed_count,errored_count) values ('sample-run-older',$1,'3c2b1a0',$2,$3,2,3,1)", [DEMO, new Date(old - 86_400_000 - 200_000), new Date(old - 86_400_000)]);
@@ -72,6 +74,7 @@ async function seed() {
   await check("sample-c7", "sample-run-1", "sample-r-b3", null, null, null, live, null);
   await check("sample-c8", "sample-run-1", "sample-r-b4", null, null, null, live, null);
   await check("sample-c9", "sample-run-1", "sample-r-b1", null, null, null, null, null);
+  await q("update checks set classification='flaky', reason='Runs disagreed. First: failed, saw a $9.00 volume discount. Second: passed, saw no volume discount.', attempts=2 where id='sample-c5'");
   const steps = ["Open the pricing page", "Switch the billing toggle to Annual", "Select the Team card", "Set seats to 3", "Type SAVE10 into the coupon box and apply it", "Read the discount and total lines"];
   for (const c of ["sample-c4", "sample-c3", "sample-c1"]) for (const [i, s] of steps.entries()) await q("insert into steps (check_id,index,purpose) values ($1,$2,$3)", [c, i + 1, s]);
   await q("insert into bug_reports (id,check_id,finding_id,summary_md) values ('sample-bug-4','sample-c4','sample-finding-4','**SAVE10 still works on Team in annual mode**\n\nFailed at step 6.')");

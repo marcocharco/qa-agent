@@ -1,8 +1,9 @@
 import AddRequirement from "@/components/AddRequirement";
+import CoverageCard from "@/components/CoverageCard";
 import RequirementRow from "@/components/RequirementRow";
 import RunNow from "@/components/RunNow";
 import { chip } from "@/components/ui";
-import { listRequirements, type RequirementRow as Req } from "@/lib/queries";
+import { listRequirements, trailCoverage, type RequirementRow as Req } from "@/lib/queries";
 
 function Section({ title, hint, rows, showTrail, empty, collapsed }: { title: string; hint: string; rows: Req[]; showTrail?: boolean; empty: string; collapsed?: boolean }) {
   const body = (
@@ -40,7 +41,7 @@ function Section({ title, hint, rows, showTrail, empty, collapsed }: { title: st
 
 export default async function Requirements({ params }: { params: Promise<{ trailId: string }> }) {
   const { trailId } = await params;
-  const { fresh, regression } = await listRequirements(trailId);
+  const [{ fresh, regression }, coverage] = await Promise.all([listRequirements(trailId), trailCoverage(trailId)]);
   const runnable = fresh.filter((r) => r.testable && (r.status === "proposed" || r.status === "approved")).length + regression.length;
   return (
     <>
@@ -48,6 +49,7 @@ export default async function Requirements({ params }: { params: Promise<{ trail
         <p className="text-sm text-muted">{runnable} requirements will run: this Trail&apos;s proposed and approved asks, plus the approved ones from merged Trails.</p>
         <RunNow trailId={trailId} />
       </div>
+      <CoverageCard c={coverage} />
       <div className="mt-6"><AddRequirement trailId={trailId} /></div>
       <Section title="New" hint="Extracted from this Trail's description and sessions." rows={fresh} empty="Nothing extracted yet. Press Run now to read the Trail and its sessions, or add a requirement yourself above." />
       <Section title="Regression" hint="Approved requirements from merged Trails. They run on every push." rows={regression} showTrail collapsed empty="No approved requirements from merged Trails yet. Approve requirements on a Trail and merge it to build the regression suite." />

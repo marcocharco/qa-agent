@@ -112,7 +112,7 @@ export async function getLive(trailId: string): Promise<Live> {
   const run = (await db().query("select id, head_sha, started_at, finished_at from runs where trail_id = $1 order by started_at desc limit 1", [trailId])).rows[0];
   if (!run) return { run: null, checks: [] };
   const { rows } = await db().query(
-    `select c.id, c.requirement_id, r.text, c.passed, c.reason, c.failed_step, c.streaming_url, c.duration_ms
+    `select c.id, c.requirement_id, r.text, c.passed, c.reason, c.classification, c.failed_step, c.streaming_url, c.duration_ms
      from checks c join requirements r on r.id = c.requirement_id where c.run_id = $1 order by r.text`,
     [run.id],
   );
@@ -159,7 +159,7 @@ export type CheckDetail = {
 
 export async function getCheck(id: string): Promise<CheckDetail | undefined> {
   const c = (await db().query(
-    `select c.id, c.goal, c.passed, c.reason, c.failed_step, c.streaming_url, r.id as req_id, r.text, r.quote, t.id as trail_id, t.title, u.head_sha, u.finished_at
+    `select c.id, c.goal, c.passed, c.reason, c.classification, c.failed_step, c.streaming_url, r.id as req_id, r.text, r.quote, t.id as trail_id, t.title, u.head_sha, u.finished_at
      from checks c join requirements r on r.id = c.requirement_id join runs u on u.id = c.run_id join trails t on t.id = u.trail_id where c.id = $1`, [id])).rows[0];
   if (!c) return;
   const steps = await db().query("select purpose from steps where check_id = $1 order by index", [id]);
@@ -170,5 +170,31 @@ export async function getCheck(id: string): Promise<CheckDetail | undefined> {
     steps: steps.rows.map((s) => s.purpose ?? ""), findingId: b?.finding_id ?? null, streamingUrl: c.streaming_url,
     file: b?.file ?? null, line: b?.line ?? null, checkpointId: b?.checkpoint_id ?? null,
     promptSessionId: b?.prompt_session_id ?? null, promptMessageId: b?.prompt_message_id ?? null,
+  };
+}
+
+export type Coverage = {
+  asks: number;
+  /** Testable and still live (proposed or approved) */
+  live: number;
+  /** Live asks that no run has ever checked */
+  neverRun: string[];
+  /** Asks that cannot be tested, with the reason */
+  untestable: { text: string; reason: string }[];
+};
+
+/** Which of this Trail's stated asks are covered by a test, which are not yet, and which cannot be. */
+export async function trailCoverage(trailId: string): Promise<Coverage> {
+  const { rows } = await db().query(
+    `select r.text, r.testable, r.untestable_reason, r.status, exists (select 1 from checks c where c.requirement_id = r.id) as ran
+     from requirements r where r.trail_id = $1 and r.status in ('proposed','approved') order by r.text`,
+    [trailId],
+  );
+  const live = rows.filter((r) => r.testable);
+  return {
+    asks: rows.length,
+    live: live.length,
+    neverRun: live.filter((r) => !r.ran).map((r) => r.text),
+    untestable: rows.filter((r) => !r.testable).map((r) => ({ text: r.text, reason: r.untestable_reason ?? "no reason given" })),
   };
 }

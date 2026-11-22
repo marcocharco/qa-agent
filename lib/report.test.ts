@@ -20,6 +20,7 @@ describe("checkStatus", () => {
     expect(checkStatus({ passed: null, reason: "Run FAILED: timeout" }, false)).toBe("errored");
     expect(checkStatus({ passed: null, reason: null }, false)).toBe("running");
     expect(checkStatus({ passed: null, reason: null }, true)).toBe("errored");
+    expect(checkStatus({ passed: null, reason: "Runs disagreed", classification: "flaky" }, true)).toBe("review");
   });
 });
 

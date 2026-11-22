@@ -98,10 +98,11 @@ export default function LiveGrid({ trailId, initial }: { trailId: string; initia
           <div className="flex h-2 overflow-hidden rounded-full bg-chip">
             <div className="bg-pass transition-all" style={{ width: `${(n("passed") / checks.length) * 100}%` }} />
             <div className="bg-fail transition-all" style={{ width: `${(n("failed") / checks.length) * 100}%` }} />
+            <div className="bg-accent/60 transition-all" style={{ width: `${(n("review") / checks.length) * 100}%` }} />
             <div className="bg-muted/50 transition-all" style={{ width: `${(n("errored") / checks.length) * 100}%` }} />
           </div>
           <p className="mt-2 text-sm text-muted">
-            {done} of {checks.length} done · <span className="text-pass">{n("passed")} passed</span> · <span className="text-fail">{n("failed")} failed</span> · {n("errored")} errored · {n("running")} running
+            {done} of {checks.length} done · <span className="text-pass">{n("passed")} passed</span> · <span className="text-fail">{n("failed")} failed</span> · {n("review")} need review · {n("errored")} errored · {n("running")} running
           </p>
         </div>
       )}

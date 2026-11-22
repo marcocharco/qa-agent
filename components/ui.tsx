@@ -10,13 +10,14 @@ const tone: Record<CheckStatus, string> = {
   passed: "bg-pass/10 text-pass",
   failed: "bg-fail/10 text-fail",
   errored: "bg-chip text-muted",
+  review: "bg-accent/10 text-accent",
 };
 
 export function StatusBadge({ status }: { status: CheckStatus }) {
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${tone[status]}`}>
       {status === "running" && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />}
-      {status}
+      {status === "review" ? "needs review" : status}
     </span>
   );
 }

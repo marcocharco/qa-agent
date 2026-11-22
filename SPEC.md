@@ -115,6 +115,8 @@ Added to scope, in priority order:
 
 Skipped on purpose: backend and API tests, Jira, Linear and Slack integrations, a standalone CLI, IDE MCP. Copy as Markdown, "Copy for Claude Code" and Brain recall cover those roles.
 
+Status (Nov 21, late): items 1 to 6 are implemented and committed on `main`. Not yet verified live: the second-run confirmation (needs a TinyFish run), drift extraction (needs Gemini), wiring attribution into bug reports (needs Gemini triage to supply the file and line; `scripts/attribute.mts <file:line>` already traces bug B to prompt 02/08 and bug D to 02/09). The nightly script is `scripts/nightly.mts`.
+
 Findings from the first live runs on the demo Trail (Nov 21): the agent echoed the expected values from the goal and passed a real bug (fixed by requiring quoted observations), misread a page value once, and silently dropped checks in a multi-check session. These are the reasons for item 1.
 
 ## Prize alignment

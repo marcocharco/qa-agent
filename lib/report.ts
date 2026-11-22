@@ -1,8 +1,8 @@
 // Pure helpers for the dashboard: check status, receipt context window, Markdown reports.
 
-export type CheckStatus = "running" | "passed" | "failed" | "errored";
+export type CheckStatus = "running" | "passed" | "failed" | "errored" | "review";
 
-export type CheckLike = { passed: boolean | null; reason: string | null };
+export type CheckLike = { passed: boolean | null; reason: string | null; classification?: string | null };
 
 /**
  * The orchestrator writes `passed` only when the agent gave a verdict. A null `passed` with a reason is an
@@ -11,6 +11,8 @@ export type CheckLike = { passed: boolean | null; reason: string | null };
 export function checkStatus(c: CheckLike, runFinished: boolean): CheckStatus {
   if (c.passed === true) return "passed";
   if (c.passed === false) return "failed";
+  // Runs disagreed or a failure was seen once: shown to a human, never a finding.
+  if (c.classification === "flaky") return "review";
   return c.reason || runFinished ? "errored" : "running";
 }
 
