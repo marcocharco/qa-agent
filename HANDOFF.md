@@ -1,35 +1,17 @@
-# Handoff: product session
+# Handoff
 
-Read `SPEC.md` first (decisions, priority order, prize alignment). This file is the current state of the build.
+Read `SPEC.md` (status, decisions) and `README.md` (how to run). One agent builds everything now.
 
-## Two sessions, two owners
-- **Product session (you):** everything in this repo except `demo/`. ArcherFish itself: orchestrator, dashboard, reports, Entire integrations, eval.
-- **Demo session:** `demo/` in this repo and the separate repo `marcocharco/acme-pricing-demo` (local clone at `/Users/marco/Developer/acme-pricing-demo`). It scripts the demo chat history and builds the Trails ArcherFish will test.
-- `target/` is a shared fixture (ACME pricing page with bug flags, used for the eval and for development). Change it only if the product needs it.
-- Use a git worktree or a branch if both sessions might commit to this repo at the same time.
+## Facts
+- Demo repo: `marcocharco/acme-pricing-demo`, local clone `/Users/marco/Developer/acme-pricing-demo`. Trail #3 is merged (base pricing), Trail #4 is open (annual billing and volume pricing, branch `feat/annual-volume`).
+- Buggy site (`TARGET_URL`): https://acme-pricing-demo.vercel.app. Fixed site (`TARGET_CONTROL_URL`): https://acme-pricing-demo-fixed.vercel.app (branch `feat/annual-volume-fixed`). Verify with `demo/verify/check.mjs <url> --expect buggy|correct`.
+- `.env.local`: `ENTIRE_PROJECT=gh/marcocharco`, `TARGET_REPO_DIR` (the clone above), `TARGET_URL`, `TARGET_CONTROL_URL`, `CONCURRENCY=2` (TinyFish default, not raised). Database name is `receipts` (not renamed).
+- The finding marker is `[archerfish:<requirement id>]`. Findings filed earlier under `[receipts:...]` are not matched.
+- Answer key for the planted bugs: `demo/ANSWER_KEY.md` (A and D in `annualQuote`, B in the strict `>`, C in `PricingCard` decrease; prompts 02/05, 02/08, 02/07, 02/09).
 
-## What exists and is tested
-- `lib/compile.ts`: requirement to strict QA goal (Gemini behind `StructuredModel`). `lib/extract.ts`: chat to requirements with verified citations. `lib/findings.ts`: finding create, auto-resolve, reviewer override. `lib/verdict.ts`: the agent's own verdict decides, errored runs never pass. 21 unit tests, model faked at the boundary.
-- Adapters, verified live but not unit tested: `lib/gemini.ts` (model fallback, backoff, quota errors fall through), `lib/tinyfish.ts` (`agent.stream`, returns `streamingUrl`, step purposes), `lib/entire.ts` (findings via the CLI, requirement id carried in the finding body as `[archerfish:<id>]`).
-- `scripts/run-slice.mts`: first live loop (compile, parallel TinyFish runs, findings on the current Trail). Worked end to end.
-- `db/schema.sql` and `npm run db:migrate`: schema on local Postgres (database `receipts`). Not wired to anything yet.
-- `app/` is still the create-next-app placeholder. No dashboard yet.
-
-## Run it
-- `.env.local` has TinyFish, Gemini, `DATABASE_URL`, `TARGET_URL` (buggy) and `TARGET_CONTROL_URL`. Never commit it, never paste keys or the personal email in chat.
-- `npm test`, `npm run typecheck`, `npx eslint .`. Scripts: `npx tsx --env-file=.env.local scripts/<file>.mts`.
-- Target sites: `TARGET_URL=https://acme-pricing-demo.vercel.app` is the demo repo's buggy branch (Trail #4, public, verified with `demo/verify/check.mjs --expect buggy`). Also set `ENTIRE_PROJECT=gh/marcocharco`, `TARGET_REPO_DIR=/Users/marco/Developer/acme-pricing-demo`, and run `scripts/orchestrate.mts 4`. `TARGET_CONTROL_URL=https://acme-pricing-demo-fixed.vercel.app` is the fixed build (branch `feat/annual-volume-fixed`, verified `--expect correct`) for the green re-run. The old `receipts-demo-*` sites from `target/` are retired for the demo.
-
-## Gotchas learned the hard way
-- TinyFish: always read `result.passed`, never the run status. Sync `agent.run` has no `streaming_url`; use `agent.stream`. Default concurrency is 2 runs, ask for more. Compiler steps must be intent-level ("set seats to 5"), not control-level.
-- Gemini: the key was on the free tier (20 requests a day per model), which blocks live calls. Check before relying on it. Keep live calls minimal.
-- Entire: findings have no title field. A high finding fails the Agent Review gate (threshold medium). Approvals gate is off. `entire trail sessions --json` lists a Trail's sessions.
-- Privacy: this repo uploads no checkpoints automatically (`manual` policy) and has email redaction on. Eight earlier checkpoints on GitHub contain a personal email; the user decided to leave them. Scan checkpoints before any `entire checkpoint push`.
-- ESM: root package is `"type": "module"` because the TinyFish SDK is ESM-only.
-
-## Next, in priority order (from SPEC.md)
-1. Orchestrator for a whole Trail: watch, extract from the Trail and its sessions, compile, run in parallel with a queue, persist to Postgres, file findings.
-2. Bug report levels 1 and 2 with Markdown export, reviewer override, Brain write-back on approve.
-3. Dashboard: requirements workspace, live grid (`streamingUrl`), replay page (needs step screenshots from the TinyFish runs API).
-4. `entire why` and prompt attribution, Graph token-savings measurement, Trail merge-recommendation comment.
-5. Eval: TinyFish vs a Claude browser agent on the buggy and control builds.
+## Gotchas
+- TinyFish strict mode needs the beta; default concurrency is 2. The agent sometimes returns an empty result list (rerun automatically) and sometimes quotes the expectation instead of the page (the screenshot check catches it).
+- An exported `TINYFISH_API_KEY` or `GEMINI_API_KEY` in the shell beats `.env.local`.
+- Replay files live in `data/replays/` (gitignored); the video link expires after 15 minutes, so replays are downloaded right after each session.
+- Never put the personal email in requests or files. Eight early checkpoints on `qa-agent` contain it (accepted). Scan any new checkpoint before pushing it.
+- `entire brain setup` in the demo repo edits its `AGENTS.md` and has not been run.

@@ -1,36 +1,28 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ArcherFish
 
-## Getting Started
+Your agent chats are your test suite. ArcherFish reads what a team told its coding agents (Entire Trails and session transcripts), turns it into plain-English requirements, tests them on the live site with parallel TinyFish browser agents, files Entire findings that gate the merge, and explains each failure: a replay with the wrong value boxed, the likely line of code, and the exact prompt that introduced it.
 
-First, run the development server:
+## Run it
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+cp .env.example .env.local     # TinyFish, Gemini, Postgres, target repo and URLs
+npm install
+npm run db:migrate
+npm run dev -- -p 3100         # dashboard on http://localhost:3100
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Do not export `TINYFISH_API_KEY` or `GEMINI_API_KEY` in your shell profile: an exported variable overrides `.env.local`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Open a Trail, review its requirements (Requirements tab), press Run now. Run view shows the live browsers, then replays.
+- `npx tsx --env-file=.env.local scripts/orchestrate.mts <trail number>` runs the same pipeline from the terminal.
+- `/r/<trail id>` is the report page: why, what changed, proof, decisions. It copies as a PR description.
+- Checks: `npm test`, `npm run typecheck`, `npx eslint .`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## How it works
 
-## Learn More
+1. **Sync.** `entire trail show` and the Trail's sessions. Gemini extracts requirements with verbatim quotes; a later message that changes an earlier requirement is proposed as drift and never applied silently.
+2. **Compile and run.** Each requirement becomes a strict-mode TinyFish goal. One browser session per feature runs its checks in order. Anything that does not pass gets a confirming session, and a bug needs two agreeing failures.
+3. **Trust.** A pass must quote what the agent saw, and that quote is checked against the last screenshot. A session that returns no results is rerun.
+4. **Report.** Failures become Entire findings (high once approved, low before), which block `entire trail merge`. Each failure gets a replay of logical steps, the failing value highlighted, a likely line (Gemini over Entire Graph query results), and the prompt behind it (`entire why`).
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`SPEC.md` has the decisions and status. `demo/` is the scripted chat history used for the demo, and `HANDOFF.md` has the demo repo facts.
