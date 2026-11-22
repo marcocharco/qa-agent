@@ -13,7 +13,7 @@ const statusTone: Record<Req["status"], string> = {
   superseded: "bg-chip text-muted",
 };
 
-export default function RequirementRow({ r, showTrail = false }: { r: Req; showTrail?: boolean }) {
+export default function RequirementRow({ r, showTrail = false, select }: { r: Req; showTrail?: boolean; select?: { checked: boolean; onChange: () => void } }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(r.text);
   const [pending, start] = useTransition();
@@ -24,7 +24,8 @@ export default function RequirementRow({ r, showTrail = false }: { r: Req; showT
   const save = () => start(async () => { setWarning(await editText(r.id, text)); setEditing(false); });
 
   return (
-    <li className={`grid gap-3 py-5 md:grid-cols-[1fr_auto] md:gap-8 ${pending ? "opacity-60" : ""}`}>
+    <li className={`grid gap-3 py-5 md:grid-cols-[1fr_auto] md:gap-8 ${select ? "md:grid-cols-[auto_1fr_auto]" : ""} ${pending ? "opacity-60" : ""}`}>
+      {select && <input type="checkbox" className="mt-1.5 h-4 w-4 accent-foreground" checked={select.checked} onChange={select.onChange} aria-label="Select requirement" />}
       <div className={dim ? "opacity-60" : ""}>
         {editing ? (
           <div className="flex flex-col gap-2">

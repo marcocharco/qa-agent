@@ -29,6 +29,13 @@ export async function setStatus(id: string, status: Status): Promise<string | nu
   return warning;
 }
 
+/** Approve or reject several at once. Each goes through setStatus so Brain and drift stay consistent. */
+export async function setMany(ids: string[], status: Status): Promise<string | null> {
+  let warning: string | null = null;
+  for (const id of ids) warning = (await setStatus(id, status)) ?? warning;
+  return warning;
+}
+
 export async function editText(id: string, text: string): Promise<string | null> {
   if (!text.trim()) return null;
   const wasApproved = (await requirementStatus(id)) === "approved";
