@@ -37,7 +37,7 @@ export function validatePick(a: z.infer<typeof Answer>, files: Map<string, strin
 const SOURCE = /\.(tsx?|jsx?|css)$/;
 
 /** The code this Trail changed, as numbered text, plus a lookup for validating the answer. */
-async function changedSources(dir: string, base: string): Promise<Map<string, string>> {
+export async function changedSources(dir: string, base: string): Promise<Map<string, string>> {
   const { stdout } = await git("git", ["diff", "--name-only", `${base}...HEAD`], { cwd: dir });
   const out = new Map<string, string>();
   let size = 0;
@@ -51,7 +51,7 @@ async function changedSources(dir: string, base: string): Promise<Map<string, st
 }
 
 /** Entire Graph's ranked, budgeted regions for a plain-language description of the failure. Null when unavailable. */
-async function graphContext(dir: string, query: string): Promise<string | null> {
+export async function graphContext(dir: string, query: string): Promise<string | null> {
   try {
     const { stdout } = await git("entire", ["graph", "query", "--format", "agent", "--head", "--profile", "full", query], { cwd: dir, maxBuffer: 8 * 1024 * 1024, timeout: 60_000 });
     return stdout.trim() || null;
