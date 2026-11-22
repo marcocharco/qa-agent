@@ -4,6 +4,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { execFile } from "node:child_process";
 import { createInterface } from "node:readline";
 import { promisify } from "node:util";
+import { db } from "./db";
 
 const exec = promisify(execFile);
 
@@ -41,7 +42,7 @@ export function jobStatus(trailId: string) {
 export async function startRun(trailId: string) {
   if (jobs.get(trailId)?.exitCode === null) return;
   const number = await trailNumber(trailId);
-  const proc = spawn("npx", ["tsx", "--env-file=.env.local", "scripts/orchestrate.mts", number], { cwd: process.cwd(), env: process.env, stdio: ["ignore", "pipe", "pipe"] });
+  const proc = spawn("npx", ["tsx", "--env-file=.env.local", "scripts/orchestrate.mts", number], { cwd: process.cwd(), env: process.env, stdio: ["ignore", "pipe", "pipe"], detached: true });
   const job: Job = { proc, log: [], exitCode: null, startedAt: Date.now() };
   const push = (l: string) => { job.log.push(l); if (job.log.length > 200) job.log.shift(); };
   createInterface({ input: proc.stdout! }).on("line", push);
@@ -49,4 +50,15 @@ export async function startRun(trailId: string) {
   proc.on("exit", (code) => { job.exitCode = code ?? 1; });
   proc.on("error", (e) => { push(String(e)); job.exitCode = 1; });
   jobs.set(trailId, job);
+}
+
+/** Stops the orchestrator (its whole process group) and closes out the run it left open. */
+export async function stopRun(trailId: string) {
+  const job = jobs.get(trailId);
+  if (job?.exitCode === null && job.proc.pid) {
+    try { process.kill(-job.proc.pid, "SIGTERM"); } catch { /* already gone */ }
+    job.log.push("Stopped by user");
+  }
+  const { rows } = await db().query("update runs set finished_at=now() where trail_id=$1 and finished_at is null returning id", [trailId]);
+  if (rows.length) await db().query("update checks set streaming_url=null where run_id = any($1)", [rows.map((r) => r.id)]);
 }

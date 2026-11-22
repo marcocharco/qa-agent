@@ -136,7 +136,7 @@ export default function RunView({ trailId, fresh, regression, initial }: { trail
           {s.todo > 0 && <span className="flex items-center gap-1.5 text-muted"><StatusIcon state="todo" size={15} />{s.todo}</span>}
         </div>
         {live.run && <span className="text-xs text-muted">{ago(live.run.startedAt)}</span>}
-        <RunNow trailId={trailId} goToRun={false} onStart={() => { setStarting(true); void poll().finally(() => setStarting(false)); }} />
+        <RunNow trailId={trailId} goToRun={false} running={running || !!job?.running || starting} onStart={() => { setStarting(true); void poll().finally(() => setStarting(false)); }} />
       </section>
 
       <div className="mt-4 grid gap-4 lg:h-[calc(100vh-300px)] lg:min-h-[540px] lg:grid-cols-[260px_minmax(0,1fr)]">
