@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { setStatus } from "@/app/actions";
-import { buildCards, defaultCard, groupByFeature, shortLabel, splitReason, summarize, verdictOf, type Card, type Verdict } from "@/lib/overview";
+import { buildCards, defaultCard, groupByFeature, shortLabel, splitReason, summarize, titleCase, verdictOf, type Card, type Verdict } from "@/lib/overview";
 import type { Live, RequirementRow } from "@/lib/queries";
 import Replay, { type ReplayData } from "./Replay";
 import RunNow from "./RunNow";
@@ -143,7 +143,7 @@ export default function RunView({ trailId, fresh, regression, initial }: { trail
         <nav className="min-h-0 overflow-auto rounded-2xl lg:max-h-[calc(100vh-300px)] lg:min-h-[320px] border border-line bg-background p-2" aria-label="Requirements by feature">
           {groups.map((g) => (
             <div key={g.feature} className="mb-2">
-              <p className="flex items-center gap-2 px-2.5 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted"><StatusIcon state={g.state} size={13} />{g.feature}</p>
+              <p className="px-2.5 pb-1 pt-2 text-xs font-semibold text-muted">{titleCase(g.feature)}</p>
               {g.cards.map((c) => (
                 <button key={c.req.id} onClick={() => choose(c)} aria-current={sel?.req.id === c.req.id}
                   className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors ${sel?.req.id === c.req.id ? "bg-chip" : "hover:bg-panel"}`}>
@@ -162,7 +162,7 @@ export default function RunView({ trailId, fresh, regression, initial }: { trail
               {groups.filter((g) => g.streamingUrl).map((g) => (
                 <button key={g.feature} onClick={() => { setPinned(g.feature); setMode("auto"); }}
                   className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium ${showLive && liveGroup?.feature === g.feature ? "border-foreground bg-chip" : "border-line hover:bg-chip"}`}>
-                  <StatusIcon state={g.state} size={13} />{g.feature}
+                  <StatusIcon state={g.state} size={13} />{titleCase(g.feature)}
                 </button>
               ))}
               {mode === "replay" && <button className="text-xs font-medium text-accent hover:underline" onClick={() => setMode("auto")}>Back to live</button>}

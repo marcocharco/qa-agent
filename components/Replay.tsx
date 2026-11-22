@@ -71,7 +71,6 @@ export default function Replay({ r, failing, checkId }: { r: ReplayData; failing
                 {mark.label && <span className={`absolute left-0 whitespace-nowrap ${mark.box[2] > 850 ? "bottom-full mb-1" : "top-full mt-1"} rounded-md bg-fail px-2 py-0.5 text-xs font-medium text-white`}>{mark.label}</span>}
               </div>
             )}
-            {failing && i === last && <span className="absolute left-3 top-3 rounded-full bg-fail px-2.5 py-1 text-xs font-medium text-white">Where it went wrong</span>}
           </div>
           <div className="flex items-center justify-between gap-3 px-5 py-3">
             <p className="min-w-0 text-sm"><span className="text-muted">Step {i + 1} of {frames.length} · </span>{f.label}{f.frames.length > 1 && <span className="text-muted"> · {f.frames.length} actions</span>}{f.durationS != null && <span className="text-muted"> · {f.durationS}s</span>}</p>
@@ -82,14 +81,18 @@ export default function Replay({ r, failing, checkId }: { r: ReplayData; failing
             </div>
           </div>
           <div ref={strip} className="flex gap-2 overflow-x-auto border-t border-line px-5 py-3">
-            {frames.map((fr, k) => (
-              <button key={k} onClick={() => go(k)} aria-label={`Step ${k + 1}: ${fr.label}`}
-                className={`relative h-14 w-24 shrink-0 overflow-hidden rounded-lg border bg-panel ${k === i ? "border-foreground" : "border-line opacity-70 hover:opacity-100"}`}>
-                {fr.file && <img src={src(fr.file)} alt="" className="h-full w-full object-cover" />}
-                {fr.frames.length > 1 && <span className="absolute bottom-1 left-1 rounded-full bg-foreground/80 px-1.5 text-[10px] font-medium text-background">×{fr.frames.length}</span>}
-                {failing && k === last && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-fail" />}
-              </button>
-            ))}
+            {frames.map((fr, k) => {
+              const bad = failing && k === last;
+              const on = k === i;
+              // Red border: this step has the error, always. Dark ring with a gap: this is the step on screen.
+              return (
+                <button key={k} onClick={() => go(k)} aria-label={`Step ${k + 1}: ${fr.label}${bad ? " (error)" : ""}`} aria-current={on}
+                  className={`relative h-14 w-24 shrink-0 overflow-hidden rounded-lg border-2 bg-panel ${bad ? "border-fail" : "border-line"} ${on ? "ring-2 ring-foreground ring-offset-2 ring-offset-background" : "opacity-70 hover:opacity-100"}`}>
+                  {fr.file && <img src={src(fr.file)} alt="" className="h-full w-full object-cover" />}
+                  {fr.frames.length > 1 && <span className="absolute bottom-1 left-1 rounded-full bg-foreground/80 px-1.5 text-[10px] font-medium text-background">×{fr.frames.length}</span>}
+                </button>
+              );
+            })}
           </div>
         </>
       )}

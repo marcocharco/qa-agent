@@ -48,11 +48,16 @@ export type FeatureGroup = { feature: string; cards: Card[]; state: IconState; s
 export function groupByFeature(cards: Card[]): FeatureGroup[] {
   const m = new Map<string, Card[]>();
   for (const c of cards) m.set(c.req.feature ?? "Other", [...(m.get(c.req.feature ?? "Other") ?? []), c]);
-  return [...m].map(([feature, cs]) => ({
+  const groups = [...m].map(([feature, cs]) => ({
     feature, cards: cs, state: groupState(cs),
     streamingUrl: cs.find((c) => c.state === "running" && c.check?.streamingUrl)?.check?.streamingUrl ?? null,
   }));
+  // Requirements with no feature are the least important group: last.
+  return [...groups.filter((g) => g.feature !== "Other"), ...groups.filter((g) => g.feature === "Other")];
 }
+
+/** "annual billing" and "ANNUAL BILLING" both read "Annual Billing". */
+export const titleCase = (s: string) => s.toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (_, a, b) => a + b.toUpperCase());
 
 /** A short label for a long requirement sentence: the first clause, trimmed. A stored title replaces this later. */
 export function shortLabel(text: string, max = 46): string {
