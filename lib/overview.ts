@@ -72,3 +72,23 @@ export function splitReason(reason: string | null): { claim: string; saw: string
 export function defaultCard(cards: Card[]): Card | undefined {
   return cards.find((c) => c.state === "failed") ?? cards.find((c) => c.state === "review") ?? cards.find((c) => c.state === "errored") ?? cards.find((c) => c.state === "running") ?? cards[0];
 }
+
+export type TrailCard = {
+  id: string; title: string; branch: string; state: "open" | "merged";
+  toReview: number; requirements: number;
+  runOpen: boolean; lastRunAt: string | null;
+  passed: number; failed: number; review: number;
+};
+export type TrailStatus = "running" | "failing" | "review" | "ready" | "idle" | "merged";
+
+/** The one word for a Trail on the home page. What needs attention first wins. */
+export function trailStatus(t: TrailCard): TrailStatus {
+  if (t.state === "merged") return "merged";
+  if (t.runOpen) return "running";
+  if (t.failed > 0) return "failing";
+  if (t.toReview > 0 || t.review > 0) return "review";
+  return t.lastRunAt ? "ready" : "idle";
+}
+
+const priority: TrailStatus[] = ["running", "failing", "review", "ready", "idle", "merged"];
+export const sortTrails = (ts: TrailCard[]) => [...ts].sort((a, b) => priority.indexOf(trailStatus(a)) - priority.indexOf(trailStatus(b)) || (b.lastRunAt ?? "").localeCompare(a.lastRunAt ?? ""));

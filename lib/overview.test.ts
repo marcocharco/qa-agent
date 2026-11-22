@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCards, defaultCard, groupByFeature, groupState, shortLabel, splitReason, summarize, verdictOf } from "./overview";
+import { buildCards, defaultCard, groupByFeature, groupState, shortLabel, sortTrails, splitReason, summarize, trailStatus, verdictOf, type TrailCard } from "./overview";
 import type { CheckRow, Live, RequirementRow } from "./queries";
 
 const req = (id: string, o: Partial<RequirementRow> = {}): RequirementRow =>
@@ -53,5 +53,22 @@ describe("text helpers", () => {
   it("splits the observed text from the reason", () => {
     expect(splitReason("It differed. Saw: Total $290.00")).toEqual({ claim: "It differed.", saw: "Total $290.00" });
     expect(splitReason(null)).toEqual({ claim: "", saw: null });
+  });
+});
+
+const trail = (o: Partial<TrailCard>): TrailCard => ({ id: "t", title: "T", branch: "b", state: "open", toReview: 0, requirements: 5, runOpen: false, lastRunAt: "2026-01-01T00:00:00Z", passed: 5, failed: 0, review: 0, ...o });
+
+describe("trailStatus", () => {
+  it("puts what needs attention first", () => {
+    expect(trailStatus(trail({ runOpen: true, failed: 2 }))).toBe("running");
+    expect(trailStatus(trail({ failed: 2, toReview: 3 }))).toBe("failing");
+    expect(trailStatus(trail({ toReview: 3 }))).toBe("review");
+    expect(trailStatus(trail({}))).toBe("ready");
+    expect(trailStatus(trail({ lastRunAt: null }))).toBe("idle");
+    expect(trailStatus(trail({ state: "merged", failed: 1 }))).toBe("merged");
+  });
+  it("lists running and failing Trails before ready and merged ones", () => {
+    const sorted = sortTrails([trail({ id: "m", state: "merged" }), trail({ id: "r" }), trail({ id: "f", failed: 1 })]);
+    expect(sorted.map((t) => t.id)).toEqual(["f", "r", "m"]);
   });
 });

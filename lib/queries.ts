@@ -4,6 +4,7 @@ import { db } from "./db";
 import { checkStatus, type CheckStatus } from "./report";
 import { segmentSteps } from "./replay";
 import type { ReplayData } from "@/components/Replay";
+import type { TrailCard } from "./overview";
 
 export type TrailRow = { id: string; title: string; description: string; branch: string; state: "open" | "merged"; requirements: number; lastRunAt: string | null };
 
@@ -219,4 +220,24 @@ export async function trailCoverage(trailId: string): Promise<Coverage> {
     neverRun: live.filter((r) => !r.ran).map((r) => r.text),
     untestable: rows.filter((r) => !r.testable).map((r) => ({ text: r.text, reason: r.untestable_reason ?? "no reason given" })),
   };
+}
+
+/** Everything the home page needs per Trail, from the latest run that actually tested something (or one still open). */
+export async function listTrailCards(): Promise<TrailCard[]> {
+  const { rows } = await db().query(
+    `select t.id, t.title, t.branch, t.state,
+       (select count(*)::int from requirements r where r.trail_id = t.id and r.status = 'proposed' and r.testable) as to_review,
+       (select count(*)::int from requirements r where r.trail_id = t.id and r.status in ('proposed','approved') and r.testable) as reqs,
+       lr.id as run_id, lr.started_at, lr.finished_at,
+       coalesce(cc.failed, 0)::int as failed, coalesce(cc.passed, 0)::int as passed, coalesce(cc.review, 0)::int as review
+     from trails t
+     left join lateral (select u.id, u.started_at, u.finished_at from runs u where u.trail_id = t.id
+       and (u.finished_at is null or exists (select 1 from checks c where c.run_id = u.id)) order by u.started_at desc limit 1) lr on true
+     left join lateral (select count(*) filter (where c.passed = false) as failed, count(*) filter (where c.passed) as passed,
+       count(*) filter (where c.passed is null and c.classification = 'flaky') as review from checks c where c.run_id = lr.id) cc on true`,
+  );
+  return rows.map((r) => ({
+    id: r.id, title: r.title, branch: r.branch, state: r.state, toReview: r.to_review, requirements: r.reqs,
+    runOpen: !!r.run_id && !r.finished_at, lastRunAt: r.started_at?.toISOString() ?? null, passed: r.passed, failed: r.failed, review: r.review,
+  }));
 }
