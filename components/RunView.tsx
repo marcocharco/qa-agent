@@ -141,6 +141,7 @@ export default function RunView({ trailId, fresh, regression, initial }: { trail
 
       <div className="mt-4 grid items-start gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
         <nav className="min-h-0 overflow-auto rounded-2xl lg:max-h-[calc(100vh-300px)] lg:min-h-[320px] border border-line bg-background p-2" aria-label="Requirements by feature">
+          <h2 className="px-2.5 pb-1 pt-2 text-sm font-semibold">Requirements</h2>
           {groups.map((g) => (
             <div key={g.feature} className="mb-2">
               <p className="px-2.5 pb-1 pt-2 text-xs font-semibold text-muted">{titleCase(g.feature)}</p>

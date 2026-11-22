@@ -53,8 +53,8 @@ export default function Replay({ r, failing, checkId }: { r: ReplayData; failing
   return (
     <section className="rounded-2xl border border-line bg-background" tabIndex={0}
       onKeyDown={(e) => { if (e.key === "ArrowRight") go(i + 1); else if (e.key === "ArrowLeft") go(i - 1); }} aria-label="Replay">
-      <header className="flex items-center justify-between gap-3 px-5 pt-4">
-        <h3 className="text-sm font-semibold text-muted">Replay</h3>
+      <header className="flex items-center justify-between gap-3 px-[18px] pt-3">
+        <h2 className="text-sm font-semibold">Replay</h2>
         {r.video && <div className="flex gap-1 rounded-full bg-chip p-0.5">{tab("steps", "Steps")}{tab("video", "Video")}</div>}
       </header>
       {mode === "video" && r.video ? (
