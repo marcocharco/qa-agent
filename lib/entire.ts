@@ -59,9 +59,19 @@ export async function showTrail(ref: TrailRef): Promise<TrailInfo> {
   };
 }
 
-export async function closedTrailNumbers(project: string): Promise<string[]> {
-  const { items } = JSON.parse(await entire(["trail", "list", "--project", project, "--status", "closed", "--json", "-n", "100"]));
-  return (items as { number: number }[]).map((i) => String(i.number));
+/**
+ * Trails whose changes are all merged. A merged change leaves the Trail's own status "open", so we
+ * cannot filter on status: list both and check each Trail's changes. Intent-only Trails have no changes.
+ */
+export async function mergedTrailNumbers(project: string): Promise<string[]> {
+  const numbers = new Set<string>();
+  for (const status of ["open", "closed"]) {
+    const { items } = JSON.parse(await entire(["trail", "list", "--project", project, "--status", status, "--json", "-n", "100"]));
+    for (const i of items as { number: number }[]) numbers.add(String(i.number));
+  }
+  const merged: string[] = [];
+  for (const n of numbers) if ((await showTrail({ project, trail: n })).merged) merged.push(n);
+  return merged;
 }
 
 export async function trailSessionIds(ref: TrailRef): Promise<string[]> {

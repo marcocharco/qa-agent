@@ -4,7 +4,7 @@ import { promisify } from "node:util";
 import { compileRequirement, type StructuredModel } from "./compile";
 import { db } from "./db";
 import {
-  addFinding, closedTrailNumbers, openFindings, resolveFinding, sessionTranscript, showTrail,
+  addFinding, mergedTrailNumbers, openFindings, resolveFinding, sessionTranscript, showTrail,
   trailSessionIds, type TrailInfo, type TrailRef,
 } from "./entire";
 import { extractRequirements, type Source } from "./extract";
@@ -101,7 +101,7 @@ const headSha = async (cfg: Config, branch: string) =>
 
 /** One Trail push: sync merged Trails and this Trail, run every requirement in parallel, file findings. */
 export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId: string; passed: number; failed: number; errored: number }> {
-  for (const n of await closedTrailNumbers(cfg.project)) {
+  for (const n of await mergedTrailNumbers(cfg.project)) {
     if (n === ref.trail) continue;
     try {
       await syncTrail(cfg, { project: cfg.project, trail: n });
