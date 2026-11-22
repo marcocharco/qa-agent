@@ -2,6 +2,7 @@
 import { randomUUID } from "node:crypto";
 import { db } from "./db";
 import { checkStatus, type CheckStatus } from "./report";
+import { cursorsFor } from "./cursor";
 import { segmentSteps } from "./replay";
 import type { ReplayData } from "@/components/Replay";
 import type { TrailCard } from "./overview";
@@ -185,11 +186,12 @@ export async function getCheck(id: string): Promise<CheckDetail | undefined> {
   // A session runs several checks. Show only this check's own steps when the agent labelled them.
   const seg = segmentSteps(rows.map((s) => s.action ?? s.purpose ?? ""), c.session_pos ?? 1);
   const b = (await db().query("select finding_id, file, line, cause, commit_sha, checkpoint_id, prompt_session_id, prompt_message_id, prompt_text from bug_reports where check_id = $1 limit 1", [id])).rows[0];
+  const cursors = hasReplay ? await cursorsFor(rows.slice(seg.start, seg.end + 1).map((s) => s.screenshot_path).filter((f): f is string => !!f)) : {};
   return {
     id: c.id, trailId: c.trail_id, trailTitle: c.title, commit: b?.commit_sha ?? c.head_sha, requirementId: c.req_id, requirement: c.text, quote: c.quote,
     status: checkStatus(c, !!c.finished_at), reason: c.reason, failedStep: c.failed_step, goal: c.goal,
     steps: rows.slice(hasReplay ? seg.start : 0, hasReplay ? seg.end + 1 : undefined).map((s) => s.action ?? s.purpose ?? ""),
-    replay: hasReplay ? { steps: rows.map((s) => ({ action: s.action ?? s.purpose ?? "", durationS: s.duration_s, file: s.screenshot_path })), video: c.video_path, start: seg.start, end: seg.end } : null,
+    replay: hasReplay ? { steps: rows.map((s) => ({ action: s.action ?? s.purpose ?? "", durationS: s.duration_s, file: s.screenshot_path })), video: c.video_path, start: seg.start, end: seg.end, cursors } : null,
     findingId: b?.finding_id ?? null, streamingUrl: c.streaming_url,
     file: b?.file ?? null, line: b?.line ?? null, checkpointId: b?.checkpoint_id ?? null,
     promptSessionId: b?.prompt_session_id ?? null, promptMessageId: b?.prompt_message_id ?? null,

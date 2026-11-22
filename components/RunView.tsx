@@ -9,7 +9,7 @@ import Replay, { type ReplayData } from "./Replay";
 import RerunTest from "./RerunTest";
 import RunNow from "./RunNow";
 import StatusIcon from "./StatusIcon";
-import { ago, btnGhost } from "./ui";
+import { btnGhost, seconds } from "./ui";
 
 const verdictUi: Record<Verdict, { text: string; cls: string; icon: "running" | "passed" | "failed" | "review" | "todo" | "errored" }> = {
   running: { text: "Running", cls: "bg-accent/10 text-accent", icon: "running" },
@@ -21,6 +21,18 @@ const verdictUi: Record<Verdict, { text: string; cls: string; icon: "running" | 
 };
 
 type Job = { running: boolean; exitCode: number | null; log: string[]; problem: string | null } | null;
+
+/** How long the run took, or how long it has been going. */
+function Elapsed({ startedAt, finishedAt }: { startedAt: string; finishedAt: string | null }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (finishedAt) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [finishedAt]);
+  const ms = (finishedAt ? +new Date(finishedAt) : now) - +new Date(startedAt);
+  return <span className="text-xs tabular-nums text-muted">{finishedAt ? "Ran for" : "Running for"} {seconds(Math.max(0, ms))}</span>;
+}
 
 /** Shown from the click on Run now until the first browser streams, so the preview is never a stale replay. */
 function StartingPanel({ job }: { job: Job }) {
@@ -136,7 +148,7 @@ export default function RunView({ trailId, fresh, regression, initial }: { trail
           ))}
           {s.todo > 0 && <span className="flex items-center gap-1.5 text-muted"><StatusIcon state="todo" size={15} />{s.todo}</span>}
         </div>
-        {live.run && <span className="text-xs text-muted">{ago(live.run.startedAt)}</span>}
+        {live.run && <Elapsed startedAt={live.run.startedAt} finishedAt={live.run.finishedAt} />}
         <RunNow trailId={trailId} goToRun={false} running={running || !!job?.running || starting} onStart={() => { setStarting(true); void poll().finally(() => setStarting(false)); }} />
       </section>
 

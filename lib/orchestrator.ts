@@ -144,7 +144,7 @@ export async function processTrail(cfg: Config, ref: TrailRef, opts: { only?: st
     await db().query(`delete from steps where check_id in (${old})`, [runId, reqs.map((r) => r.id)]);
     await db().query(`delete from bug_reports where check_id in (${old})`, [runId, reqs.map((r) => r.id)]);
     await db().query("delete from checks where run_id=$1 and requirement_id = any($2)", [runId, reqs.map((r) => r.id)]);
-    await db().query("update runs set finished_at=null where id=$1", [runId]);
+    await db().query("update runs set finished_at=null, started_at=now() where id=$1", [runId]);
   } else {
     await db().query("insert into runs (id,trail_id,head_sha) values ($1,$2,$3)", [runId, trail.id, sha]);
   }

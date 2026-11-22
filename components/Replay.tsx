@@ -9,6 +9,8 @@ import { collapseSteps } from "@/lib/collapse";
 export type ReplayData = {
   steps: { action: string; durationS: number | null; file: string | null }[];
   video: string | null;
+  /** Where the cursor is in each screenshot, as fractions of its size */
+  cursors?: Record<string, { x: number; y: number } | null>;
   /** Inclusive range of this check's own steps inside the shared browser session */
   start: number;
   end: number;
@@ -44,6 +46,12 @@ export default function Replay({ r, failing, checkId }: { r: ReplayData; failing
   }, [i]);
 
   const f = frames[i];
+  // The cursor's path up to this step: its last few positions, oldest faintest.
+  const raw = r.steps.slice(r.start, r.end + 1);
+  const upTo = f ? raw.lastIndexOf(f.frames[f.frames.length - 1]) : -1;
+  const path = raw.slice(Math.max(0, upTo - 8), upTo + 1)
+    .map((x) => (x.file ? r.cursors?.[x.file] ?? null : null))
+    .filter((p, k, a): p is { x: number; y: number } => !!p && (k === 0 || !a[k - 1] || Math.hypot(p.x - a[k - 1]!.x, p.y - a[k - 1]!.y) > 0.004));
   if (!frames.length) return null;
   const go = (n: number) => { setPlaying(false); setI(Math.min(last, Math.max(0, n))); };
   const tab = (m: "steps" | "video", label: string) => (
@@ -65,6 +73,20 @@ export default function Replay({ r, failing, checkId }: { r: ReplayData; failing
             {f.file ? (
               <img src={src(f.file)} alt={f.label} className="h-full w-full object-contain" />
             ) : <div className="flex h-full items-center justify-center text-sm text-muted">No screenshot for this step</div>}
+            {path.length > 1 && (
+              <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden>
+                {path.slice(1).map((p, k) => {
+                  const a = path[k];
+                  const fade = (k + 1) / (path.length - 1);
+                  return (
+                    <g key={k} opacity={0.25 + 0.75 * fade} strokeLinecap="round">
+                      <line x1={a.x} y1={a.y} x2={p.x} y2={p.y} stroke="white" strokeWidth={7} vectorEffect="non-scaling-stroke" />
+                      <line x1={a.x} y1={a.y} x2={p.x} y2={p.y} stroke="var(--color-accent)" strokeWidth={3.5} vectorEffect="non-scaling-stroke" />
+                    </g>
+                  );
+                })}
+              </svg>
+            )}
             {failing && mark?.box && f.file === mark.file && (
               <div className="pointer-events-none absolute rounded-md border-2 border-fail bg-fail/10 shadow-[0_0_0_3px_rgba(220,38,38,0.25)]"
                 style={{ top: `${mark.box[0] / 10}%`, left: `${mark.box[1] / 10}%`, height: `${(mark.box[2] - mark.box[0]) / 10}%`, width: `${(mark.box[3] - mark.box[1]) / 10}%` }}>
