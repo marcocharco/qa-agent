@@ -11,7 +11,7 @@ import { extractRequirements, type Source } from "./extract";
 import { decideFindings, type CheckResult } from "./findings";
 import { runFeature } from "./tinyfish";
 import { parseTranscript } from "./transcript";
-import { toFeatureVerdicts, type Verdict } from "./verdict";
+import { gaveNoVerdict, toFeatureVerdicts, type Verdict } from "./verdict";
 import { needsSecondRun, reconcile } from "./confirm";
 import { recommend } from "./recommendation";
 import { saveReplay } from "./replay";
@@ -176,9 +176,17 @@ export async function processTrail(cfg: Config, ref: TrailRef): Promise<{ runId:
       const session = async (items: typeof compiled, tag: string) => {
         cfg.log?.(`session "${label}"${tag}: ${items.length} checks`);
         const ids = items.map((c) => c.checkId);
-        const run = await runFeature(renderFeatureGoal(items.map((c) => c.spec)), cfg.targetUrl, items.length, {
+        const goal = renderFeatureGoal(items.map((c) => c.spec));
+        const start = () => runFeature(goal, cfg.targetUrl, items.length, {
           onStreamingUrl: (u) => void db().query("update checks set streaming_url=$2 where id = any($1)", [ids, u]),
         });
+        // The agent sometimes finishes its browsing and then hands back an empty list. That says nothing about the site,
+        // so the session is simply run again (up to twice) before anything counts as a verdict.
+        let run = await start();
+        for (let n = 1; n <= 2 && gaveNoVerdict(run, items.length); n++) {
+          cfg.log?.(`session "${label}"${tag}: the agent returned no results, running it again (${n}/2)`);
+          run = await start();
+        }
         // The stream is dead once the session ends. Clear it so the live view never embeds a finished browser.
         await db().query("update checks set streaming_url=null where id = any($1)", [ids]);
         // Download the screenshots and recording right away, the video link expires. A failure here never loses a verdict.

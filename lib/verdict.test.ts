@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toFeatureVerdicts, toVerdict } from "./verdict";
+import { toFeatureVerdicts, toVerdict, gaveNoVerdict } from "./verdict";
 
 describe("toVerdict", () => {
   it("passes when the run completed and the agent reported passed: true", () => {
@@ -63,4 +63,13 @@ describe("toFeatureVerdicts", () => {
     expect(toFeatureVerdicts({ status: "COMPLETED", error: null, result: { results: [ok(1, true)] } }, 2).map((x) => x.state)).toEqual(["passed", "errored"]);
     expect(toFeatureVerdicts({ status: "FAILED", error: "boom", result: null }, 2).map((x) => x.state)).toEqual(["errored", "errored"]);
   });
+});
+
+describe("gaveNoVerdict", () => {
+  const run = (result: Record<string, unknown>) => ({ status: "COMPLETED" as const, error: null, result });
+  it("is true when the agent returned an empty list", () => expect(gaveNoVerdict(run({ results: [] }), 2)).toBe(true));
+  it("is false when any check has a result", () => {
+    expect(gaveNoVerdict(run({ results: [{ check: 1, passed: false, failed_step: 1, observed: "x", reason: "y" }] }), 2)).toBe(false);
+  });
+  it("is false for an environment failure, which a rerun does not explain", () => expect(gaveNoVerdict({ status: "FAILED", error: "boom", result: null }, 1)).toBe(false));
 });

@@ -78,6 +78,7 @@ export function renderFeatureGoal(specs: CheckSpec[]): string {
     .join("\n\n");
   return `You are testing one feature of a web page in a single browser session. Run the checks below one after another, in order.
 Before every check, reload the page so it starts from a fresh state, then do exactly that check's steps and nothing else.
+There are ${specs.length} check${specs.length === 1 ? "" : "s"}. Your final answer must contain exactly ${specs.length} result${specs.length === 1 ? "" : "s"}, one per check, even if a check failed.
 
 ${checks}
 
@@ -85,6 +86,7 @@ Rules:
 - If a step can't be completed exactly as written, or the page differs from what the steps assume, stop that check, mark it failed with the step number, and move on to the next check. Do not work around problems and do not retry a failed action.
 - If a control is already in the state a step asks for (for example the page already shows Monthly billing), do not click it; just confirm the state.
 - For every check, first copy into "observed" the exact visible text of the price lines and labels the check is about, as they appear on the page after the steps (for example the Subtotal, discount and total lines). Copy only what you see. Never copy the Expected text and never fill in a line that is not on the page: if a line is missing, say it is missing.
+- After the steps and before reading, scroll down until the totals and every discount line are visible, so the result is on screen.
 - Only then compare "observed" with Expected. passed is true only if they match exactly. Do not assume anything passed.
 - "check" is the check number. failed_step is a step number inside that check, or null if the check passed. If every step could be done but the page differs from Expected, give the last step of that check.
 - Return exactly one result for every check, in order. Never return an empty list: if a check cannot be started or finished for any reason, still return its result with passed set to false, observed set to what you saw instead, and the reason.`;
