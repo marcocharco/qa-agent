@@ -22,6 +22,9 @@ describe("collapseSteps", () => {
   it("drops the agent wrapping up", () => {
     expect(collapseSteps(fr("Select Team plan", "Check final state", "Finish result", "Task completed")).map((g) => g.label)).toEqual(["Select Team plan", "Read the result"]);
   });
+  it("drops a reload that trails the last read", () => {
+    expect(collapseSteps(fr("Select Team plan", "Check final state", "Reload page fresh")).map((g) => g.label)).toEqual(["Select Team plan", "Read the result"]);
+  });
   it("keeps different actions apart and strips check bookkeeping", () => {
     expect(collapseSteps(fr("Reload page for CHECK 2 fresh state", "Select Team plan for Check 2")).map((g) => g.label)).toEqual(["Reload page fresh state", "Select Team plan"]);
   });

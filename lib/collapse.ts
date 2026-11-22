@@ -9,6 +9,7 @@ export const cleanAction = (a: string) => a.replace(/^check \d+( step \d+)?:\s*/
 const LOOK = /^(check|visual check|understand|confirm|recheck|re-check|get|full page|find how|read|verify|look|inspect|take)\b/i;
 // The agent wrapping up, not a user action.
 const NOISE = /^(finish|finished|complete|completed|report|task|return|done|submit)\b/i;
+const SETUP = /^(reload|navigate|refresh|open|go to|visit)\b/i;
 const isLook = (a: string) => LOOK.test(a);
 /** Same action, different numbers: "Increase seats to 4", "Increase seats to 5". */
 const shape = (a: string) => a.replace(/\bfrom \d+ /i, "").replace(/\d+/g, "#");
@@ -43,5 +44,8 @@ export function collapseSteps(all: Frame[]): Group[] {
     };
   });
   // The agent looking at the page is not something a person needs to repeat. The last look stays: it is the evidence frame.
-  return groups.filter((g, i) => !g.look || i === groups.length - 1).map((g) => (g.look ? { ...g, label: "Read the result" } : g));
+  // A reload or navigation after the last read belongs to whatever the agent did next, not to this check.
+  const lastLook = groups.map((g) => g.look).lastIndexOf(true);
+  const kept = lastLook >= 0 ? groups.filter((g, i) => i <= lastLook || !SETUP.test(cleanAction(g.frames[0].action))) : groups;
+  return kept.filter((g, i) => !g.look || i === kept.length - 1).map((g) => (g.look ? { ...g, label: "Read the result" } : g));
 }

@@ -1,3 +1,4 @@
+import { collapseSteps } from "./collapse";
 import { graphDiff, type FileChange } from "./graph";
 import { buildCards, shortLabel, splitReason, verdictOf, summarize, type IconState, type Verdict } from "./overview";
 import { getCheck, getLive, getTrail, listRequirements, trailCoverage } from "./queries";
@@ -28,7 +29,7 @@ export async function buildReport(trailId: string): Promise<ReportDoc | null> {
     const detail = await getCheck(c.check!.id);
     const r = detail?.replay;
     const { claim, saw } = splitReason(c.check!.reason);
-    return { checkId: c.check!.id, state: c.state, label: shortLabel(c.req.text, 70), text: c.req.text, claim, saw, frame: r ? ([...r.steps.slice(r.start, r.end + 1)].reverse().find((x) => x.file)?.file ?? null) : null };
+    return { checkId: c.check!.id, state: c.state, label: shortLabel(c.req.text, 70), text: c.req.text, claim, saw, frame: r ? (collapseSteps(r.steps.slice(r.start, r.end + 1)).at(-1)?.file ?? null) : null };
   }));
   proof.sort((a, b) => rank[a.state] - rank[b.state]);
 

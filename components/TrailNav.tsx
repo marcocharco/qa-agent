@@ -1,27 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import type { TrailRow } from "@/lib/queries";
-
-export function TrailPicker({ trails, current }: { trails: Pick<TrailRow, "id" | "title" | "state">[]; current: string }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const seg = pathname.split("/")[3];
-  const tab = seg === "requirements" || seg === "history" ? `/${seg}` : "";
-  return (
-    <select
-      aria-label="Trail"
-      value={current}
-      onChange={(e) => router.push(`/t/${e.target.value}${tab}`)}
-      className="max-w-full rounded-full border border-line bg-background py-1.5 pl-4 pr-8 text-sm font-medium outline-none focus:border-foreground"
-    >
-      {trails.map((t) => (
-        <option key={t.id} value={t.id}>{t.title}{t.state === "merged" ? " (merged)" : ""}</option>
-      ))}
-    </select>
-  );
-}
+import { usePathname } from "next/navigation";
 
 export function TrailTabs({ trailId }: { trailId: string }) {
   const pathname = usePathname();
