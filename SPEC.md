@@ -14,46 +14,27 @@ Nov 21, 2026 · @Marco Chen
 
 **Constraints:** solo build, 12–15 usable hours, TypeScript.
 
-## Status (Nov 21, evening)
+## Status (Nov 22)
 
-Two sessions are building in parallel. **Product** owns this repo except `demo/`. **Demo** owns `demo/` and the separate repo `marcocharco/acme-pricing-demo`. See `HANDOFF.md` for the product side's run instructions.
+One agent builds everything now (product, demo, dashboard). See `HANDOFF.md` for run instructions.
 
 **Done and verified**
 
-- Entire set up on both repos (mirror, Trails, Gates with Agent Review at a medium threshold, approvals off). The gating loop works end to end: an open `high` finding blocks `merge`, resolving it clears the gate.
-- Core seams, 21 unit tests: goal compiler, requirement extraction with citation checks, finding lifecycle (create, auto-resolve, reviewer override), verdict mapping (the agent's verdict decides, errored runs never pass).
-- Adapters, verified live: Gemini (model fallback, backoff, quota errors fall through), TinyFish `agent.stream` in strict mode, Entire CLI findings.
-- First live loop: Gemini compiled four requirements, TinyFish ran them in parallel on the live site, findings landed on a real Trail. Caught two true positives and one false failure, resolved through the override flow.
-- Local Postgres schema and migrate script.
-- Whole-Trail orchestrator (`lib/orchestrator.ts`, `scripts/orchestrate.mts <trail> [--watch]`): syncs a Trail and its sessions, extracts requirements, compiles, runs in a pool, persists to Postgres, files findings. Reviewed, not yet run against the demo Trail.
-- ACME pricing page fixture in `target/` with four conditional bugs and a bug-free control build (verified in Chrome). The two hosted copies still show the old design and need a redeploy.
-- Demo kit in `demo/`: static ACME seed, three scripted sessions, answer key, driver with session isolation, Chrome verifier.
-- Demo repo: seed pushed, session 1 run through a real headless Claude Code and merged as Trail #3 (PR #1). Entire linked the session to the Trail on its own, and the checkpoint scanned clean.
+- Entire: Trails (#3 merged base, #4 open demo Trail), sessions, findings and the merge gate (an open `high` finding blocks `merge`), `why`, Graph diff and Graph query.
+- Demo repo `marcocharco/acme-pricing-demo`: buggy build live at the demo URL (all four bugs verified), fixed build on a second Vercel project, checkpoints scanned.
+- Orchestrator: Gemini extraction with verbatim citations, drift (`supersedes`, applied only on approval), compile cache, one browser session per feature, a second confirming session for anything that did not pass (a bug needs two agreeing failures), sessions that return no results are rerun, severity follows approval, replay capture (screenshots and video).
+- Dashboard (Focus layout): Trail home, Run view with live preview and replay, Requirements view, History, bug report with replay (logical steps only, the failing value boxed on the screenshot), Stop button, report page (`/r/<trail>`) that can replace the PR description.
+- Root cause: Gemini picks the likely line from Entire Graph's ranked regions, `entire why` finds the checkpoint, session and the exact prompt. Bug C resolves to prompt 02/07 as the answer key says. Graph context is about 63 percent smaller than sending the changed files (4 failures, estimated tokens).
+- Trust features: observed-text pass rule, flaky detection, environment vs test-problem classification, coverage card, merge recommendation, nightly script.
 
-**In progress**
+**Left**
 
-- Getting the four bugs to land in session 2 (see "Demo repo and scripted sessions").
-
-**Left, demo side**
-
-1. Land the bugs, run the real session 2 on `feat/annual-volume`, scan the checkpoint, open the demo Trail (#4) and leave it open.
-2. Deploy the buggy branch to Vercel as the "live site" target (treated as staging in the pitch).
-3. Run the fix session (session 3) ahead of time, verify with `--expect correct`, redeploy for the green re-run. Keep it ready for the fix beat.
-4. Record the demo-repo facts for the product session (Trail numbers, URL, repo path) and merge the `demo-kit` branch to `main` at a clean boundary.
-
-**Left, product side (priority order below)**
-
-- Run the orchestrator live on the demo Trail end to end.
-- Bug report levels 1 and 2 with Markdown export, reviewer override, Brain write-back on approve.
-- Dashboard: requirements workspace, live grid, replay page (needs step screenshots from the TinyFish runs API).
-- `entire why` prompt attribution, Graph token-savings measurement, Trail merge-recommendation comment, the prevention beat, URL mode on a real site.
-- Eval: TinyFish vs a Claude browser agent on the buggy and control builds.
-
-**Left, shared and submission**
-
-- Check the Gemini key is on a billed project (it was on the free tier, 20 requests a day per model).
-- Scan every checkpoint for emails and keys before any `entire checkpoint push`. Eight early checkpoints on `qa-agent` contain a personal email, a known and accepted exposure.
-- Rehearsal, backup video, cached results, Devpost write-up (it must say the demo chat history is scripted), X or LinkedIn post tagging TinyFish.
+- Reliability of the agent's final answer (empty result lists). Mitigated by reruns, not solved.
+- The fix-and-green loop run end to end (copy report into Claude Code, push, re-run on the fixed build, gate opens, merge).
+- Prevention beat: `entire brain setup` in the demo repo (edits `AGENTS.md`), then recall in a fresh session.
+- Eval: TinyFish vs a Claude browser agent.
+- Publish the report into the PR body.
+- Rehearsal, backup video and cached results, Devpost write-up (must say the demo chat history is scripted), post tagging TinyFish.
 
 ## Decisions
 
