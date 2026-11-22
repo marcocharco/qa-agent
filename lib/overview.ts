@@ -5,9 +5,12 @@ import { recommend, type Recommendation } from "./recommendation";
 export type IconState = "running" | "passed" | "failed" | "review" | "errored" | "proposed" | "todo";
 export type Card = { req: RequirementRow; regression: boolean; check: CheckRow | null; state: IconState };
 
+/** What a run tests from this Trail: testable, and approved or a not yet reviewed non-drift ask. */
+const runnable = (r: RequirementRow) => r.testable && (r.status === "approved" || (r.status === "proposed" && !r.supersedes));
+
 export function buildCards(fresh: RequirementRow[], regression: RequirementRow[], live: Live): Card[] {
   const byReq = new Map(live.checks.map((c) => [c.requirementId, c]));
-  const mine = fresh.filter((r) => r.testable && (r.status === "approved" || (r.status === "proposed" && !r.supersedes)));
+  const mine = fresh.filter(runnable);
   return [...mine.map((r) => ({ r, regression: false })), ...regression.map((r) => ({ r, regression: true }))].map(({ r, regression: reg }) => {
     const check = byReq.get(r.id) ?? null;
     return { req: r, regression: reg, check, state: check ? check.status : r.status === "proposed" ? "proposed" : "todo" };
@@ -54,6 +57,13 @@ export function groupByFeature(cards: Card[]): FeatureGroup[] {
   }));
   // Requirements with no feature are the least important group: last.
   return [...groups.filter((g) => g.feature !== "Other"), ...groups.filter((g) => g.feature === "Other")];
+}
+
+/** Feature order of the Run view's list, so the Requirements page can match it: features of what runs first, then the rest, no feature last. */
+export function featureOrder(fresh: RequirementRow[], regression: RequirementRow[]): string[] {
+  const seen = [...fresh.filter(runnable), ...regression, ...fresh].map((r) => r.feature ?? "Other");
+  const all = [...new Set(seen)];
+  return [...all.filter((f) => f !== "Other"), ...all.filter((f) => f === "Other")];
 }
 
 /** "annual billing" and "ANNUAL BILLING" both read "Annual Billing". */

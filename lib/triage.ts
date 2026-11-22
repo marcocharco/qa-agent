@@ -10,7 +10,7 @@ import { db } from "./db";
 
 const git = promisify(execFile);
 
-const Answer = z.object({
+export const Answer = z.object({
   file: z.string().describe("Path of the file, exactly as listed"),
   line: z.number().int().describe("Line number of the line where the faulty logic is written, the one a fix would change"),
   line_text: z.string().describe("That line copied exactly"),
@@ -19,7 +19,23 @@ const Answer = z.object({
 
 export type Pick = { file: string; line: number; why: string };
 
-const numbered = (text: string) => text.split("\n").map((l, i) => `${i + 1}: ${l}`).join("\n");
+export const numbered = (text: string) => text.split("\n").map((l, i) => `${i + 1}: ${l}`).join("\n");
+
+/** The question put to the model, the same for every kind of code context. */
+export function triagePrompt(requirement: string, reason: string, code: string, ranked: boolean): string {
+  return `A browser test of a web app failed. Find the line of code that most likely causes it.
+
+Requirement: ${requirement}
+What the tester saw: ${reason}
+
+Rules:
+- Choose a line from the files below, the one where the faulty logic is written (not a caller, not a type).
+- Copy that line exactly into line_text, and give its line number.
+- Prefer a real cause over a symptom. Do not guess a file that is not listed.
+
+${ranked ? "Code regions ranked as most relevant (file:line shown inline):" : "Code changed by this branch:"}
+${code}`;
+}
 
 /** Trust the model's pointer only if the file was offered and the quoted text really is on that line. */
 export function validatePick(a: z.infer<typeof Answer>, files: Map<string, string>): Pick | null {
@@ -83,18 +99,7 @@ export async function triageCheck(
     // "files": every changed file, whole. "graph": only the regions Entire Graph ranks for this failure.
     const graph = opts.context !== "files" ? await graphContext(dir, `${row.text}. ${row.reason}`) : null;
     const code = graph ?? [...files].map(([f, t]) => `=== ${f}\n${numbered(t)}`).join("\n\n");
-    const prompt = `A browser test of a web app failed. Find the line of code that most likely causes it.
-
-Requirement: ${row.text}
-What the tester saw: ${row.reason}
-
-Rules:
-- Choose a line from the files below, the one where the faulty logic is written (not a caller, not a type).
-- Copy that line exactly into line_text, and give its line number.
-- Prefer a real cause over a symptom. Do not guess a file that is not listed.
-
-${graph ? "Code regions ranked as most relevant (file:line shown inline):" : "Code changed by this branch:"}
-${code}`;
+    const prompt = triagePrompt(row.text, row.reason, code, !!graph);
     const pick = validatePick(Answer.parse(await cfg.model(prompt, Answer)), files);
     if (!pick) return null;
     const a = await attributeLine(pick.file, pick.line, dir).catch(() => null);

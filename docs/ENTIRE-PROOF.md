@@ -1,6 +1,6 @@
 # Entire proof
 
-Generated 2026-11-22T07:52:46.263Z by `scripts/entire-proof.mts`. Everything below is read live from the Entire CLI in the demo repo (`/Users/marco/Developer/acme-pricing-demo`), then checked against what ArcherFish stored. Re-run any command yourself in that folder.
+Generated 2026-11-22T08:01:28.607Z by `scripts/entire-proof.mts`. Everything below is read live from the Entire CLI in the demo repo (`/Users/marco/Developer/acme-pricing-demo`), then checked against what ArcherFish stored. Re-run any command yourself in that folder.
 
 ## 1. Entire is installed and wired to the repo
 
@@ -62,7 +62,7 @@ Trail #4 has 1 linked session(s): `592c31ad-d010-4ba7-8b75-5add236ef78f`.
 $ entire graph query --format agent --head --profile full "<failure in plain words>"
 ```
 
-Changed source files: 3685 tokens (about, characters / 4). Graph query context: 1734 tokens. That is 53 percent less code for the model to read.
+The measurement (real Gemini prompt tokens, three kinds of code context, accuracy checked against the answer key) is in `docs/GRAPH-EVAL.md`, produced by `scripts/graph-eval.mts`.
 
 ## 6. Brain: approved requirements are memories, anchored to the code they constrain, shown to an agent about to edit it
 

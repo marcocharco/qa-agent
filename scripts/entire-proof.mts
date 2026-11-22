@@ -9,7 +9,6 @@ import { promisify } from "node:util";
 import { attributeLine } from "../lib/attribution";
 import { closeDb, db } from "../lib/db";
 import { sessionTranscript, showTrail, trailSessionIds } from "../lib/entire";
-import { changedSources, graphContext } from "../lib/triage";
 import { parseTranscript } from "../lib/transcript";
 
 const run = promisify(execFile);
@@ -108,12 +107,8 @@ try {
   }
   say("", `**Attribution accuracy: ${right} of ${total}** planted bugs traced to the prompt that introduced them. The controls resolve to a different session, or to nothing, so the lookup is not pinned to one answer. Reproduce: \`entire why lib/pricing.ts:<line>\` on branch \`feat/annual-volume\`.`, "");
 
-  // 5. Graph: how much less code the model reads
-  say("## 5. Graph: ranked code context instead of whole files", "");
-  const files = await changedSources(dir, "origin/main");
-  const whole = [...files.values()].reduce((n, t) => n + t.length, 0);
-  const ctx = await graphContext(dir, "pressing minus at 3 seats on the Team plan changes the total price");
-  say("```", `$ entire graph query --format agent --head --profile full "<failure in plain words>"`, "```", "", `Changed source files: ${Math.round(whole / 4)} tokens (about, characters / 4). Graph query context: ${ctx ? Math.round(ctx.length / 4) : "n/a"} tokens. ${ctx ? `That is ${Math.round((1 - ctx.length / whole) * 100)} percent less code for the model to read.` : ""}`, "");
+  // 5. Graph: measured separately, with real token counts
+  say("## 5. Graph: ranked code context instead of whole files", "", "```", `$ entire graph query --format agent --head --profile full "<failure in plain words>"`, "```", "", "The measurement (real Gemini prompt tokens, three kinds of code context, accuracy checked against the answer key) is in `docs/GRAPH-EVAL.md`, produced by `scripts/graph-eval.mts`.", "");
 } finally {
   await sh("git", ["worktree", "remove", "--force", dir]);
   await rm(dir, { recursive: true, force: true }).catch(() => {});

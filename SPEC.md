@@ -24,7 +24,7 @@ One agent builds everything now (product, demo, dashboard). See `HANDOFF.md` for
 - Demo repo `marcocharco/acme-pricing-demo`: buggy build live at the demo URL (all four bugs verified), fixed build on a second Vercel project, checkpoints scanned.
 - Orchestrator: Gemini extraction with verbatim citations, drift (`supersedes`, applied only on approval), compile cache, one browser session per feature, a second confirming session for anything that did not pass (a bug needs two agreeing failures), sessions that return no results are rerun, severity follows approval, replay capture (screenshots and video).
 - Dashboard (Focus layout): Trail home, Run view with live preview and replay, Requirements view, History, bug report with replay (logical steps only, the failing value boxed on the screenshot), Stop button, report page (`/r/<trail>`) that can replace the PR description.
-- Root cause: Gemini picks the likely line from Entire Graph's ranked regions, `entire why` finds the checkpoint, session and the exact prompt. Bug C resolves to prompt 02/07 as the answer key says. Graph context is about 63 percent smaller than sending the changed files (4 failures, estimated tokens).
+- Root cause: Gemini picks the likely line from Entire Graph's ranked regions, `entire why` finds the checkpoint, session and the exact prompt. Bug C resolves to prompt 02/07 as the answer key says. Graph context uses 67 percent fewer real Gemini prompt tokens than the changed files and 61 percent fewer than a unified diff, with the same accuracy (8/8 right line, `docs/GRAPH-EVAL.md`).
 - Trust features: observed-text pass rule, flaky detection, environment vs test-problem classification, coverage card, merge recommendation, nightly script.
 
 **Left**

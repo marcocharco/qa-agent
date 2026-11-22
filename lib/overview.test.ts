@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCards, currentStep, defaultCard, groupByFeature, groupState, shortLabel, sortTrails, splitReason, summarize, trailStatus, verdictOf, type TrailCard } from "./overview";
+import { buildCards, currentStep, defaultCard, featureOrder, groupByFeature, groupState, shortLabel, sortTrails, splitReason, summarize, trailStatus, verdictOf, type TrailCard } from "./overview";
 import type { CheckRow, Live, RequirementRow } from "./queries";
 
 const req = (id: string, o: Partial<RequirementRow> = {}): RequirementRow =>
@@ -37,6 +37,13 @@ describe("groups", () => {
     expect(groupState(cards.slice(0, 2))).toBe("failed");
     const g = groupByFeature(cards);
     expect(g.map((x) => [x.feature, x.state, x.streamingUrl])).toEqual([["F", "failed", null], ["G", "running", "https://s"]]);
+  });
+  it("the Requirements page orders features exactly like the Run view", () => {
+    const fresh = [req("x", { feature: "Untested", testable: false }), req("a", { feature: "B" }), req("n"), req("c", { feature: "A" })];
+    const regression = [req("r", { feature: "Z" })];
+    expect(groupByFeature(buildCards(fresh, regression, live([]))).map((g) => g.feature)).toEqual(["B", "A", "Z", "Other"]);
+    // Features that only have untested asks follow, and no feature stays last.
+    expect(featureOrder(fresh, regression)).toEqual(["B", "A", "Z", "Untested", "Other"]);
   });
   it("opens on what needs you", () => {
     const l = live([chk("a", "passed"), chk("b", "failed")]);
